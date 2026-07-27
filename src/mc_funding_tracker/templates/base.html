@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}mc-funding-tracker{% endblock %}</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --border: #e0e0e5;
+  --text: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --accent: #0071e3;
+  --accent-hover: #0077ed;
+  --badge-bg: #e8f0fe;
+  --badge-text: #1a56db;
+  --confirmed-bg: #f0fdf4;
+  --confirmed-text: #16a34a;
+  --unconfirmed-bg: #fffbeb;
+  --unconfirmed-text: #b45309;
+  --error-bg: #fef2f2;
+  --error-text: #b91c1c;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1c1e;
+    --surface: #2c2c2e;
+    --border: #3a3a3c;
+    --text: #f5f5f7;
+    --text-secondary: #98989d;
+    --accent: #2997ff;
+    --accent-hover: #409cff;
+    --badge-bg: #1e3a5f;
+    --badge-text: #70b8ff;
+    --confirmed-bg: #0a2e1a;
+    --confirmed-text: #34d058;
+    --unconfirmed-bg: #3a2e0a;
+    --unconfirmed-text: #e8a94a;
+    --error-bg: #3a0a0a;
+    --error-text: #f87171;
+    --shadow: 0 1px 3px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.2);
+  }
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.container { max-width: 960px; margin: 0 auto; padding: 24px 20px; }
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+header a { text-decoration: none; color: var(--text); }
+header h1 { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+
+nav { display: flex; gap: 16px; margin-left: auto; align-items: center; }
+nav a, nav .btn { color: var(--accent); text-decoration: none; font-size: 14px; font-weight: 500; }
+nav a:hover { color: var(--accent-hover); }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow);
+}
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 14px; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); font-weight: 600; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--bg); }
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--badge-bg);
+  color: var(--badge-text);
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge.confirmed { background: var(--confirmed-bg); color: var(--confirmed-text); }
+.badge.unconfirmed { background: var(--unconfirmed-bg); color: var(--unconfirmed-text); }
+
+a { color: var(--accent); }
+a:hover { color: var(--accent-hover); }
+
+h2 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+h3 { font-size: 15px; font-weight: 600; }
+
+.section-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text-secondary);
+  margin: 24px 0 10px;
+}
+
+button, .btn {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+  line-height: 1.4;
+  transition: background .15s, border-color .15s;
+}
+button:hover, .btn:hover { background: var(--bg); }
+button.primary, .btn.primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+button.primary:hover, .btn.primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+button.small, .btn.small { padding: 3px 9px; font-size: 12px; }
+
+.inline-form { display: inline; }
+
+.flash {
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+.flash.success { background: var(--confirmed-bg); color: var(--confirmed-text); }
+.flash.error { background: var(--error-bg); color: var(--error-text); }
+
+.meta { color: var(--text-secondary); font-size: 13px; }
+
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.field input[type=text], .field input[type=url], .field input[type=number], .field textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+}
+.field input:focus, .field textarea:focus { outline: none; border-color: var(--accent); }
+.founder-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.founder-row input[type=text] { flex: 2; }
+.founder-row input[type=number] { flex: 1; }
+
+.round-list, .note-list { list-style: none; }
+.round-item, .note-item {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.round-item:last-child, .note-item:last-child { border-bottom: none; }
+.round-item .details { flex: 1; }
+.round-item .amount { font-weight: 600; }
+
+{% block extra_style %}{% endblock %}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <a href="/"><h1>mc-funding-tracker</h1></a>
+    <nav>
+      <a href="/">Companies</a>
+      <a href="/company/new" class="btn primary">+ Add Company</a>
+    </nav>
+  </header>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</div>
+</body>
+</html>

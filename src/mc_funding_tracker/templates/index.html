@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Companies – mc-funding-tracker{% endblock %}
+{% block content %}
+{% if not companies %}
+  <div class="card">
+    <p class="meta">No companies tracked yet. <a href="/company/new">Add one</a> to get started.</p>
+  </div>
+{% else %}
+  <div class="card" style="padding: 0;">
+    <table>
+      <thead>
+        <tr>
+          <th>Company</th>
+          <th>Founder(s)</th>
+          <th>Dartmouth IP</th>
+          <th>Last Round</th>
+          <th>Notes</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in companies %}
+        <tr>
+          <td><a href="{{ url_for('company_detail', company_id=c.id) }}">{{ c.name }}</a></td>
+          <td class="meta">
+            {% for f in c.founders %}{{ f.name }}{% if f.class_year %} {{ f.class_year|classyear }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
+          </td>
+          <td>{% if c.dartmouth_ip %}<span class="badge">Yes</span>{% else %}<span class="meta">—</span>{% endif %}</td>
+          <td>
+            {% if c.latest_round %}
+              {{ c.latest_round.round_type }} {{ c.latest_round.amount_usd|usd }}
+              <span class="badge {{ c.latest_round.status }}">{{ c.latest_round.status }}</span>
+            {% else %}
+              <span class="meta">no rounds yet</span>
+            {% endif %}
+          </td>
+          <td class="meta">{{ c.notes_count }}</td>
+          <td>
+            <form class="inline-form" method="post" action="{{ url_for('research_company', company_id=c.id) }}">
+              <button type="submit" class="small">Research</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+{% endblock %}

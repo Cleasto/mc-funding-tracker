@@ -1,0 +1,149 @@
+"""Flask web dashboard for mc-funding-tracker.
+
+Research runs synchronously in the request handler (see research_company below) —
+there's no native GUI here, so there's no thread-safety class of bug to worry about
+the way meetcap's menu bar app had. A research pass just blocks one request for
+~10-30s, which is fine for occasional single-user use.
+"""
+from __future__ import annotations
+
+import logging
+import os
+import threading
+import webbrowser
+from typing import Any, Dict
+
+from flask import Flask, flash, redirect, render_template, request, url_for
+from werkzeug.serving import make_server
+
+from . import db
+from .research import run_research
+
+logger = logging.getLogger(__name__)
+
+PORT = 5430
+
+_server = None
+_thread = None
+
+
+def _format_usd(amount) -> str:
+    """Render a dollar amount compactly, e.g. 2_000_000 -> '$2M'."""
+    if amount is None:
+        return "undisclosed"
+    if amount >= 1_000_000:
+        return f"${amount / 1_000_000:.1f}M".replace(".0M", "M")
+    if amount >= 1_000:
+        return f"${amount / 1_000:.0f}K"
+    return f"${amount}"
+
+
+def _format_class_year(year) -> str:
+    """Render a class year compactly, e.g. 2018 -> "'18"."""
+    if not year:
+        return ""
+    return f"'{str(int(year))[-2:]}"
+
+
+def create_app(config: Dict[str, Any]) -> Flask:
+    """Create and configure the Flask application."""
+    app = Flask(__name__)
+    app.secret_key = os.urandom(24)
+    app.jinja_env.filters["usd"] = _format_usd
+    app.jinja_env.filters["classyear"] = _format_class_year
+    db.init_db()
+
+    @app.route("/")
+    def index():
+        companies = db.get_companies()
+        return render_template("index.html", companies=companies)
+
+    @app.route("/company/new")
+    def new_company():
+        return render_template("add_company.html")
+
+    @app.route("/company", methods=["POST"])
+    def create_company():
+        name = request.form.get("name", "").strip()
+        website = request.form.get("website", "").strip()
+        dartmouth_ip = request.form.get("dartmouth_ip") == "yes"
+
+        founders = []
+        for fname, fyear in zip(
+            request.form.getlist("founder_name"),
+            request.form.getlist("founder_class_year"),
+        ):
+            fname = fname.strip()
+            if not fname:
+                continue
+            class_year = int(fyear) if fyear.strip().isdigit() else None
+            founders.append({"name": fname, "class_year": class_year})
+
+        if not name:
+            flash("Company name is required.", "error")
+            return redirect(url_for("new_company"))
+
+        company_id = db.add_company(name, website, dartmouth_ip, founders)
+        flash(f"Added {name}.", "success")
+        return redirect(url_for("company_detail", company_id=company_id))
+
+    @app.route("/company/<int:company_id>")
+    def company_detail(company_id: int):
+        company = db.get_company(company_id)
+        if company is None:
+            return "Company not found", 404
+        return render_template("company.html", company=company)
+
+    @app.route("/company/<int:company_id>/research", methods=["POST"])
+    def research_company(company_id: int):
+        company = db.get_company(company_id)
+        if company is None:
+            return "Company not found", 404
+        try:
+            summary = run_research(company_id, config)
+            msg = (
+                f"Research complete: SEC EDGAR found {summary['edgar_found']} "
+                f"({summary['edgar_inserted']} new), web search found {summary['web_found']} "
+                f"({summary['web_inserted']} new)."
+            )
+            flash(msg, "error" if summary["errors"] else "success")
+            for err in summary["errors"]:
+                flash(err, "error")
+        except Exception as e:
+            logger.exception(f"Research failed for company_id={company_id}")
+            flash(f"Research failed: {e}", "error")
+        return redirect(url_for("company_detail", company_id=company_id))
+
+    @app.route("/company/<int:company_id>/note", methods=["POST"])
+    def add_note(company_id: int):
+        body = request.form.get("body", "").strip()
+        if body:
+            db.add_note(company_id, body)
+            flash("Note added.", "success")
+        return redirect(url_for("company_detail", company_id=company_id))
+
+    @app.route("/round/<int:round_id>/confirm", methods=["POST"])
+    def confirm_round_route(round_id: int):
+        db.confirm_round(round_id)
+        return redirect(request.referrer or url_for("index"))
+
+    return app
+
+
+def start_server(config: Dict[str, Any]) -> str:
+    """Start the Werkzeug server in a daemon thread. Returns the base URL."""
+    global _server, _thread
+    if _server is not None:
+        return f"http://127.0.0.1:{PORT}"
+
+    app = create_app(config)
+    _server = make_server("127.0.0.1", PORT, app, threaded=True)
+    _thread = threading.Thread(target=_server.serve_forever, daemon=True)
+    _thread.start()
+    return f"http://127.0.0.1:{PORT}"
+
+
+def open_dashboard(config: Dict[str, Any]) -> None:
+    """Start the server (if needed) and open the dashboard in a browser."""
+    url = start_server(config)
+    webbrowser.open(url)

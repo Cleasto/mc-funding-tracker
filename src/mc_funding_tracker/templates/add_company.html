@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Add Company – mc-funding-tracker{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>Add Company</h2>
+  <form method="post" action="{{ url_for('create_company') }}">
+    <div class="field">
+      <label for="name">Company name</label>
+      <input type="text" id="name" name="name" required autofocus>
+    </div>
+    <div class="field">
+      <label for="website">Website</label>
+      <input type="url" id="website" name="website" placeholder="https://example.com">
+    </div>
+    <div class="field">
+      <label for="dartmouth_ip">Dartmouth IP?</label>
+      <select id="dartmouth_ip" name="dartmouth_ip">
+        <option value="no">No</option>
+        <option value="yes">Yes</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label>Founders</label>
+      <div id="founder-rows">
+        <div class="founder-row">
+          <input type="text" name="founder_name" placeholder="Founder name">
+          <input type="number" name="founder_class_year" placeholder="Class year (e.g. 2018)">
+        </div>
+      </div>
+      <button type="button" class="small" id="add-founder-row">+ Add another founder</button>
+    </div>
+
+    <button type="submit" class="primary">Add Company</button>
+  </form>
+</div>
+<script>
+document.getElementById("add-founder-row").addEventListener("click", function () {
+  var rows = document.getElementById("founder-rows");
+  var row = document.createElement("div");
+  row.className = "founder-row";
+  row.innerHTML =
+    '<input type="text" name="founder_name" placeholder="Founder name">' +
+    '<input type="number" name="founder_class_year" placeholder="Class year (e.g. 2018)">';
+  rows.appendChild(row);
+});
+</script>
+{% endblock %}

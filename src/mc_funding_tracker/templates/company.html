@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{{ company.name }} – mc-funding-tracker{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>{{ company.name }}{% if company.dartmouth_ip %} <span class="badge">Dartmouth IP</span>{% endif %}</h2>
+  <p class="meta">
+    {% if company.website %}<a href="{{ company.website }}" target="_blank" rel="noopener">{{ company.website }}</a> &middot; {% endif %}
+    {% for f in company.founders %}{{ f.name }}{% if f.class_year %} {{ f.class_year|classyear }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
+  </p>
+  <form method="post" action="{{ url_for('research_company', company_id=company.id) }}" style="margin-top: 12px;">
+    <button type="submit" class="primary">Run Research</button>
+  </form>
+</div>
+
+<div class="section-title">Funding Rounds</div>
+<div class="card">
+  {% if not company.funding_rounds %}
+    <p class="meta">No funding rounds recorded yet. Try Run Research above, or check back once something's announced.</p>
+  {% else %}
+    <ul class="round-list">
+      {% for r in company.funding_rounds %}
+      <li class="round-item">
+        <div class="details">
+          <div><span class="amount">{{ r.round_type or "Round" }}</span> — {{ r.amount_usd|usd }}</div>
+          <div class="meta">
+            {{ r.announced_date or "date unknown" }}
+            {% if r.investors %} &middot; {{ r.investors }}{% endif %}
+            &middot; <span class="badge">{{ r.source }}</span>
+            <span class="badge {{ r.status }}">{{ r.status }}</span>
+            {% if r.source_url %} &middot; <a href="{{ r.source_url }}" target="_blank" rel="noopener">source</a>{% endif %}
+          </div>
+        </div>
+        {% if r.status == "unconfirmed" %}
+        <form class="inline-form" method="post" action="{{ url_for('confirm_round_route', round_id=r.id) }}">
+          <button type="submit" class="small">Confirm</button>
+        </form>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>
+
+<div class="section-title">Notes</div>
+<div class="card">
+  {% if not company.notes %}
+    <p class="meta">No notes yet.</p>
+  {% else %}
+    <ul class="note-list">
+      {% for n in company.notes %}
+      <li class="note-item">
+        <div class="details">
+          <div>{{ n.body }}</div>
+          <div class="meta">{{ n.created_at }}</div>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  <form method="post" action="{{ url_for('add_note', company_id=company.id) }}" style="margin-top: 14px;">
+    <div class="field">
+      <label for="body">Add a note</label>
+      <textarea id="body" name="body" rows="2" placeholder="Heard from a friend that they're closing a $5M seed..."></textarea>
+    </div>
+    <button type="submit" class="primary">Add Note</button>
+  </form>
+</div>
+{% endblock %}
