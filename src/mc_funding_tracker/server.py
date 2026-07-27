@@ -17,7 +17,7 @@ from flask import Flask, flash, redirect, render_template, request, url_for
 from werkzeug.serving import make_server
 
 from . import db
-from .research import run_research
+from .research import parse_funding_update, run_research
 
 logger = logging.getLogger(__name__)
 
@@ -115,12 +115,26 @@ def create_app(config: Dict[str, Any]) -> Flask:
             flash(f"Research failed: {e}", "error")
         return redirect(url_for("company_detail", company_id=company_id))
 
-    @app.route("/company/<int:company_id>/note", methods=["POST"])
-    def add_note(company_id: int):
-        body = request.form.get("body", "").strip()
-        if body:
-            db.add_note(company_id, body)
-            flash("Note added.", "success")
+    @app.route("/company/<int:company_id>/report-update", methods=["POST"])
+    def report_funding_update(company_id: int):
+        text = request.form.get("body", "").strip()
+        if not text:
+            return redirect(url_for("company_detail", company_id=company_id))
+        try:
+            parsed = parse_funding_update(text, config)
+            db.add_funding_round(
+                company_id=company_id,
+                round_type=parsed.get("round_type"),
+                amount_usd=parsed.get("amount_usd"),
+                announced_date=parsed.get("announced_date"),
+                investors=parsed.get("investors"),
+                source="internal",
+                source_url=None,
+            )
+            flash(f"Recorded: {parsed.get('round_type') or 'funding round'}.", "success")
+        except Exception as e:
+            logger.exception(f"Failed to parse funding update for company_id={company_id}")
+            flash(f"Could not record that update: {e}", "error")
         return redirect(url_for("company_detail", company_id=company_id))
 
     @app.route("/round/<int:round_id>/confirm", methods=["POST"])

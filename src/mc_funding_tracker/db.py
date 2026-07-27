@@ -226,13 +226,12 @@ def get_grand_total_funding() -> int:
 
 
 def get_companies() -> List[dict]:
-    """Return all companies with founders, latest round, note count, and total funding attached."""
+    """Return all companies with founders, latest round, and total funding attached."""
     with _connect() as conn:
         companies = [dict(r) for r in conn.execute("SELECT * FROM companies ORDER BY name").fetchall()]
         for company in companies:
             company["founders"] = get_founders_for_company(company["id"], conn)
             company["latest_round"] = get_latest_round(company["id"], conn)
-            company["notes_count"] = get_notes_count(company["id"], conn)
             company["total_funding"] = get_total_funding(company["id"], conn)
         return companies
 
@@ -287,17 +286,17 @@ def add_funding_round(
     """Insert a funding round. Returns True if a new row was inserted (False if it matched an
     existing row by the dedupe key).
 
-    Only 'manual' entries are confirmed by default. SEC EDGAR matches come from a
-    fuzzy company-name text search — the filing content is official, but which
-    company it belongs to isn't verified automatically, so it needs review just
-    like web-research results do.
+    Only 'internal' entries (self-reported by the user) are confirmed by default.
+    SEC EDGAR matches come from a fuzzy company-name text search — the filing
+    content is official, but which company it belongs to isn't verified
+    automatically, so it needs review just like web-research results do.
 
     On a dedupe hit, backfills cik/matched_entity_name onto the existing row if it's
     missing them — e.g. rows inserted before those columns existed only get that data
     filled in the next time research turns up the same filing.
     """
     if status is None:
-        status = "confirmed" if source == "manual" else "unconfirmed"
+        status = "confirmed" if source == "internal" else "unconfirmed"
     with _connect() as conn:
         existing = conn.execute(
             """

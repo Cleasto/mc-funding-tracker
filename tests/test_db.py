@@ -28,10 +28,10 @@ def test_add_funding_round_dedupes_identical_rows():
     company_id = db.add_company("Acme Inc", "", False, [])
 
     first = db.add_funding_round(
-        company_id, "Seed", 2_000_000, "2026-01-15", "Some VC", "manual", None
+        company_id, "Seed", 2_000_000, "2026-01-15", "Some VC", "internal", None
     )
     second = db.add_funding_round(
-        company_id, "Seed", 2_000_000, "2026-01-15", "Some VC", "manual", None
+        company_id, "Seed", 2_000_000, "2026-01-15", "Some VC", "internal", None
     )
 
     assert first is True
@@ -56,15 +56,15 @@ def test_add_funding_round_backfills_cik_on_existing_row():
     assert round_["matched_entity_name"] == "Acme Inc"
 
 
-def test_manual_rounds_are_confirmed_by_default_others_are_not():
+def test_internal_rounds_are_confirmed_by_default_others_are_not():
     company_id = db.add_company("Acme Inc", "", False, [])
 
-    db.add_funding_round(company_id, "Seed", 1_000_000, "2026-01-01", None, "manual", None)
+    db.add_funding_round(company_id, "Seed", 1_000_000, "2026-01-01", None, "internal", None)
     db.add_funding_round(company_id, "Seed", 1_000_000, "2026-02-01", None, "web_research", "https://example.com")
     db.add_funding_round(company_id, "Seed", 1_000_000, "2026-03-01", None, "sec_edgar", "https://sec.gov/x", cik="123")
 
     rounds = {r["source"]: r["status"] for r in db.get_company(company_id)["funding_rounds"]}
-    assert rounds["manual"] == "confirmed"
+    assert rounds["internal"] == "confirmed"
     assert rounds["web_research"] == "unconfirmed"
     assert rounds["sec_edgar"] == "unconfirmed"
 
@@ -125,7 +125,7 @@ def test_confirm_sec_edgar_round_records_company_cik():
 
 def test_total_funding_only_counts_confirmed_amounts():
     company_id = db.add_company("Acme Inc", "", False, [])
-    db.add_funding_round(company_id, "Seed", 1_000_000, "2026-01-01", None, "manual", None)  # confirmed
+    db.add_funding_round(company_id, "Seed", 1_000_000, "2026-01-01", None, "internal", None)  # confirmed
     db.add_funding_round(company_id, "Series A", 5_000_000, "2026-06-01", None, "web_research", "https://x")  # unconfirmed
     round_id = [
         r["id"] for r in db.get_company(company_id)["funding_rounds"] if r["round_type"] == "Series A"
@@ -138,8 +138,8 @@ def test_total_funding_only_counts_confirmed_amounts():
 def test_grand_total_sums_across_companies():
     c1 = db.add_company("Acme Inc", "", False, [])
     c2 = db.add_company("Beta Co", "", False, [])
-    db.add_funding_round(c1, "Seed", 1_000_000, "2026-01-01", None, "manual", None)
-    db.add_funding_round(c2, "Seed", 2_000_000, "2026-01-01", None, "manual", None)
+    db.add_funding_round(c1, "Seed", 1_000_000, "2026-01-01", None, "internal", None)
+    db.add_funding_round(c2, "Seed", 2_000_000, "2026-01-01", None, "internal", None)
     db.add_funding_round(c2, "Series A", 5_000_000, "2026-06-01", None, "web_research", "https://x")  # unconfirmed
 
     assert db.get_grand_total_funding() == 3_000_000
@@ -154,13 +154,11 @@ def test_add_note_and_notes_count():
     assert db.get_notes_count(company_id) == 1
 
 
-def test_get_companies_lists_latest_round_and_notes_count():
+def test_get_companies_lists_latest_round():
     company_id = db.add_company("Acme Inc", "", False, [{"name": "Jane Doe", "class_year": 2018}])
-    db.add_funding_round(company_id, "Seed", 1_000_000, "2026-01-01", None, "manual", None)
-    db.add_funding_round(company_id, "Series A", 5_000_000, "2026-06-01", None, "manual", None)
-    db.add_note(company_id, "note")
+    db.add_funding_round(company_id, "Seed", 1_000_000, "2026-01-01", None, "internal", None)
+    db.add_funding_round(company_id, "Series A", 5_000_000, "2026-06-01", None, "internal", None)
 
     companies = db.get_companies()
     assert len(companies) == 1
     assert companies[0]["latest_round"]["round_type"] == "Series A"
-    assert companies[0]["notes_count"] == 1

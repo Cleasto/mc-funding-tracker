@@ -80,28 +80,15 @@
   {% endif %}
 </div>
 
-<div class="section-title">Notes</div>
+<div class="section-title">Report a Funding Update</div>
 <div class="card">
-  {% if not company.notes %}
-    <p class="meta">No notes yet.</p>
-  {% else %}
-    <ul class="note-list">
-      {% for n in company.notes %}
-      <li class="note-item">
-        <div class="details">
-          <div>{{ n.body }}</div>
-          <div class="meta">{{ n.created_at }}</div>
-        </div>
-      </li>
-      {% endfor %}
-    </ul>
-  {% endif %}
-  <form method="post" action="{{ url_for('add_note', company_id=company.id) }}" style="margin-top: 14px;">
+  <p class="meta">Describe what you heard in plain English — it's parsed into a funding round and added above, already confirmed (source: internal).</p>
+  <form class="research-form" method="post" action="{{ url_for('report_funding_update', company_id=company.id) }}" style="margin-top: 10px;">
     <div class="field">
-      <label for="body">Add a note</label>
-      <textarea id="body" name="body" rows="2" placeholder="Heard from a friend that they're closing a $5M seed..."></textarea>
+      <label for="body">What happened?</label>
+      <textarea id="body" name="body" rows="2" placeholder="Closed a $2M seed round in July 2025 led by Acme Ventures"></textarea>
     </div>
-    <button type="submit" class="primary">Add Note</button>
+    <button type="submit" class="primary" data-working-text="Recording…">Add Update</button>
   </form>
 </div>
 {% endblock %}

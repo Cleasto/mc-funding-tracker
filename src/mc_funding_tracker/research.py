@@ -106,6 +106,84 @@ def search_web_for_funding(company_name: str, founder_names: str, config: Dict[s
     return []
 
 
+PARSE_UPDATE_TOOL = {
+    "name": "submit_funding_round",
+    "description": "Submit the funding round described in the user's free-text update.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "round_type": {
+                "type": "string",
+                "description": "e.g. Seed, Series A, Series B, Bridge, Grant",
+            },
+            "amount_usd": {
+                "type": ["integer", "null"],
+                "description": (
+                    "Amount raised in USD, ONLY if a specific figure is explicitly stated in the "
+                    "text (e.g. '$2M', '2 million dollars'). Null if no figure is stated, even if "
+                    "you could estimate a plausible one — never guess or infer an amount."
+                ),
+            },
+            "announced_date": {
+                "type": ["string", "null"],
+                "description": (
+                    "YYYY-MM-DD if a specific day is given. If only a month/year is mentioned "
+                    "(e.g. 'July 2025'), use the first of that month (2025-07-01). Null if no "
+                    "date at all is mentioned — never guess a date."
+                ),
+            },
+            "investors": {
+                "type": ["string", "null"],
+                "description": "Investor names explicitly named in the text, or null if none are named — never invent investor names.",
+            },
+        },
+        "required": ["round_type"],
+    },
+}
+
+
+def parse_funding_update(text: str, config: Dict[str, Any]) -> Dict[str, Any]:
+    """Parse a short free-text funding update (e.g. "closed a $2M seed in July 2025")
+    into structured round fields via a forced Claude tool call. No web search — this
+    is pure extraction from what the user already typed, not a lookup."""
+    api_key = config.get("anthropic_api_key", "")
+    if not api_key:
+        raise RuntimeError(
+            "Anthropic API key not configured — run `mc-funding-tracker configure --api-key ...` "
+            "or set ANTHROPIC_API_KEY."
+        )
+
+    client = anthropic.Anthropic(api_key=api_key, timeout=60.0, max_retries=1)
+    model = config.get("claude_model", "claude-sonnet-5")
+
+    prompt = (
+        f'Parse this funding update into structured fields: "{text}"\n\n'
+        "This will be recorded as confirmed, trusted data with no further review, so extract "
+        "only what is explicitly stated — do not fill in, estimate, or guess any field that "
+        "isn't clearly present in the text. Use null for anything not stated."
+    )
+
+    try:
+        response = client.messages.create(
+            model=model,
+            max_tokens=512,
+            tools=[PARSE_UPDATE_TOOL],
+            tool_choice={"type": "tool", "name": "submit_funding_round"},
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except anthropic.NotFoundError as e:
+        raise RuntimeError(
+            f"Claude model '{model}' was not found (HTTP 404) — it has likely been retired "
+            "or renamed. Update claude_model in ~/.config/mc-funding-tracker/config.yaml."
+        ) from e
+
+    for block in response.content:
+        if getattr(block, "type", None) == "tool_use" and block.name == "submit_funding_round":
+            return block.input
+
+    raise RuntimeError("Claude did not return structured data for this update.")
+
+
 def run_research(company_id: int, config: Dict[str, Any]) -> Dict[str, Any]:
     """Run SEC EDGAR + web research for a company and store results.
 
