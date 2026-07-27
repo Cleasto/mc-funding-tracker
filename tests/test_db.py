@@ -39,15 +39,34 @@ def test_add_funding_round_dedupes_identical_rows():
     assert len(db.get_company(company_id)["funding_rounds"]) == 1
 
 
-def test_manual_rounds_are_confirmed_by_default_web_research_is_not():
+def test_add_funding_round_backfills_cik_on_existing_row():
+    company_id = db.add_company("Acme Inc", "", False, [])
+    db.add_funding_round(
+        company_id, "Form D Offering", 2_000_000, "2026-01-15", None, "sec_edgar", "https://sec.gov/x"
+    )
+
+    reinserted = db.add_funding_round(
+        company_id, "Form D Offering", 2_000_000, "2026-01-15", None, "sec_edgar", "https://sec.gov/x",
+        cik="1234567", matched_entity_name="Acme Inc",
+    )
+
+    round_ = db.get_company(company_id)["funding_rounds"][0]
+    assert reinserted is False
+    assert round_["cik"] == "1234567"
+    assert round_["matched_entity_name"] == "Acme Inc"
+
+
+def test_manual_rounds_are_confirmed_by_default_others_are_not():
     company_id = db.add_company("Acme Inc", "", False, [])
 
     db.add_funding_round(company_id, "Seed", 1_000_000, "2026-01-01", None, "manual", None)
     db.add_funding_round(company_id, "Seed", 1_000_000, "2026-02-01", None, "web_research", "https://example.com")
+    db.add_funding_round(company_id, "Seed", 1_000_000, "2026-03-01", None, "sec_edgar", "https://sec.gov/x", cik="123")
 
     rounds = {r["source"]: r["status"] for r in db.get_company(company_id)["funding_rounds"]}
     assert rounds["manual"] == "confirmed"
     assert rounds["web_research"] == "unconfirmed"
+    assert rounds["sec_edgar"] == "unconfirmed"
 
 
 def test_confirm_round_updates_status():
@@ -58,6 +77,50 @@ def test_confirm_round_updates_status():
     db.confirm_round(round_id)
 
     assert db.get_company(company_id)["funding_rounds"][0]["status"] == "confirmed"
+
+
+def test_reject_round_blocklists_cik_and_hides_from_latest_round():
+    company_id = db.add_company("Acme Inc", "", False, [])
+    db.add_funding_round(
+        company_id, "Seed", 1_000_000, "2026-05-01", None, "sec_edgar", "https://sec.gov/x",
+        cik="0001234567", matched_entity_name="Wrong Company Inc",
+    )
+    round_id = db.get_company(company_id)["funding_rounds"][0]["id"]
+
+    db.reject_round(round_id)
+
+    company = db.get_company(company_id)
+    assert company["funding_rounds"][0]["status"] == "rejected"
+    assert db.get_latest_round(company_id) is None
+    assert db.get_rejected_ciks(company_id) == ["0001234567"]
+
+
+def test_unreject_round_reverses_status_and_blocklist():
+    company_id = db.add_company("Acme Inc", "", False, [])
+    db.add_funding_round(
+        company_id, "Seed", 1_000_000, "2026-05-01", None, "sec_edgar", "https://sec.gov/x",
+        cik="0001234567",
+    )
+    round_id = db.get_company(company_id)["funding_rounds"][0]["id"]
+    db.reject_round(round_id)
+
+    db.unreject_round(round_id)
+
+    assert db.get_company(company_id)["funding_rounds"][0]["status"] == "unconfirmed"
+    assert db.get_rejected_ciks(company_id) == []
+
+
+def test_confirm_sec_edgar_round_records_company_cik():
+    company_id = db.add_company("Acme Inc", "", False, [])
+    db.add_funding_round(
+        company_id, "Seed", 1_000_000, "2026-05-01", None, "sec_edgar", "https://sec.gov/x",
+        cik="0001234567",
+    )
+    round_id = db.get_company(company_id)["funding_rounds"][0]["id"]
+
+    db.confirm_round(round_id)
+
+    assert db.get_company(company_id)["sec_cik"] == "0001234567"
 
 
 def test_add_note_and_notes_count():

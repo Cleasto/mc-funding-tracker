@@ -48,7 +48,10 @@ def search_form_d(company_name: str, contact_email: str, limit: int = 5) -> List
             continue
         results.append(
             {
-                "cik": ciks[0],
+                # Normalized to unpadded (e.g. "1781814" not "0001781814") — the API
+                # returns zero-padded CIKs, but URLs and the blocklist use unpadded,
+                # so this needs to match consistently everywhere.
+                "cik": str(int(ciks[0])),
                 "accession_no": source["adsh"],
                 "entity_name": (source.get("display_names") or [company_name])[0],
                 "file_date": source.get("file_date"),
@@ -113,12 +116,25 @@ def fetch_form_d_filing(cik: str, accession_no: str, contact_email: str) -> Opti
     return parsed
 
 
-def get_form_d_rounds(company_name: str, contact_email: str) -> List[Dict[str, Any]]:
+def get_form_d_rounds(
+    company_name: str,
+    contact_email: str,
+    blocked_ciks: Optional[List[str]] = None,
+) -> List[Dict[str, Any]]:
     """Search + fetch Form D filings for a company, normalized as funding-round dicts
-    ready for db.add_funding_round(**round, source='sec_edgar')."""
+    ready for db.add_funding_round(**round, source='sec_edgar').
+
+    `blocked_ciks` skips filers previously marked "not this company" — the search
+    is a fuzzy company-name text match, so the same wrong company can otherwise
+    keep resurfacing on every research run.
+    """
+    blocked = set(blocked_ciks or [])
     hits = search_form_d(company_name, contact_email)
     rounds = []
     for hit in hits:
+        if hit["cik"] in blocked:
+            logger.info(f"Skipping blocklisted CIK {hit['cik']} for {company_name!r}")
+            continue
         filing = fetch_form_d_filing(hit["cik"], hit["accession_no"], contact_email)
         if filing is None:
             continue
@@ -130,6 +146,7 @@ def get_form_d_rounds(company_name: str, contact_email: str) -> List[Dict[str, A
                 "investors": None,
                 "source_url": filing["filing_url"],
                 "cik": hit["cik"],
+                "entity_name": filing["entity_name"],
                 "related_persons": filing["related_persons"],
             }
         )

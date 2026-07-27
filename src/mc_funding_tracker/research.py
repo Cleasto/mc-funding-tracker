@@ -121,7 +121,10 @@ def run_research(company_id: int, config: Dict[str, Any]) -> Dict[str, Any]:
     logger.info(f"Starting research for company_id={company_id} ({company['name']})")
 
     try:
-        edgar_rounds = edgar.get_form_d_rounds(company["name"], config.get("sec_contact_email", ""))
+        blocked_ciks = db.get_rejected_ciks(company_id)
+        edgar_rounds = edgar.get_form_d_rounds(
+            company["name"], config.get("sec_contact_email", ""), blocked_ciks=blocked_ciks
+        )
         summary["edgar_found"] = len(edgar_rounds)
         for r in edgar_rounds:
             inserted = db.add_funding_round(
@@ -132,11 +135,11 @@ def run_research(company_id: int, config: Dict[str, Any]) -> Dict[str, Any]:
                 investors=r["investors"],
                 source="sec_edgar",
                 source_url=r["source_url"],
+                cik=r["cik"],
+                matched_entity_name=r["entity_name"],
             )
             if inserted:
                 summary["edgar_inserted"] += 1
-        if edgar_rounds and not company.get("sec_cik"):
-            db.set_company_cik(company_id, edgar_rounds[0]["cik"])
     except Exception as e:
         logger.exception(f"SEC EDGAR lookup failed for {company['name']}")
         summary["errors"].append(f"SEC EDGAR: {e}")

@@ -127,6 +127,17 @@ def create_app(config: Dict[str, Any]) -> Flask:
         db.confirm_round(round_id)
         return redirect(request.referrer or url_for("index"))
 
+    @app.route("/round/<int:round_id>/reject", methods=["POST"])
+    def reject_round_route(round_id: int):
+        db.reject_round(round_id)
+        flash("Marked as not this company — it won't be re-suggested from that filer.", "success")
+        return redirect(request.referrer or url_for("index"))
+
+    @app.route("/round/<int:round_id>/unreject", methods=["POST"])
+    def unreject_round_route(round_id: int):
+        db.unreject_round(round_id)
+        return redirect(request.referrer or url_for("index"))
+
     return app
 
 

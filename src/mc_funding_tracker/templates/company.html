@@ -12,13 +12,16 @@
   </form>
 </div>
 
+{% set live_rounds = company.funding_rounds|rejectattr("status", "equalto", "rejected")|list %}
+{% set rejected_rounds = company.funding_rounds|selectattr("status", "equalto", "rejected")|list %}
+
 <div class="section-title">Funding Rounds</div>
 <div class="card">
-  {% if not company.funding_rounds %}
+  {% if not live_rounds %}
     <p class="meta">No funding rounds recorded yet. Try Run Research above, or check back once something's announced.</p>
   {% else %}
     <ul class="round-list">
-      {% for r in company.funding_rounds %}
+      {% for r in live_rounds %}
       <li class="round-item">
         <div class="details">
           <div><span class="amount">{{ r.round_type or "Round" }}</span> — {{ r.amount_usd|usd }}</div>
@@ -29,15 +32,51 @@
             <span class="badge {{ r.status }}">{{ r.status }}</span>
             {% if r.source_url %} &middot; <a href="{{ r.source_url }}" target="_blank" rel="noopener">source</a>{% endif %}
           </div>
+          {% if r.source == "sec_edgar" %}
+          <div class="meta">
+            SEC filer: <strong>{{ r.matched_entity_name or "unknown" }}</strong>
+            {% if r.matched_entity_name and company.name.lower() not in r.matched_entity_name.lower() %}
+            <span class="badge unconfirmed">name doesn't match — check before confirming</span>
+            {% endif %}
+          </div>
+          {% endif %}
         </div>
-        {% if r.status == "unconfirmed" %}
-        <form class="inline-form" method="post" action="{{ url_for('confirm_round_route', round_id=r.id) }}">
-          <button type="submit" class="small">Confirm</button>
-        </form>
-        {% endif %}
+        <div>
+          {% if r.status == "unconfirmed" %}
+          <form class="inline-form" method="post" action="{{ url_for('confirm_round_route', round_id=r.id) }}">
+            <button type="submit" class="small">Confirm</button>
+          </form>
+          {% endif %}
+          <form class="inline-form" method="post" action="{{ url_for('reject_round_route', round_id=r.id) }}">
+            <button type="submit" class="small">Not this company</button>
+          </form>
+        </div>
       </li>
       {% endfor %}
     </ul>
+  {% endif %}
+
+  {% if rejected_rounds %}
+  <details style="margin-top: 14px;">
+    <summary>Rejected ({{ rejected_rounds|length }})</summary>
+    <ul class="round-list">
+      {% for r in rejected_rounds %}
+      <li class="round-item">
+        <div class="details">
+          <div><span class="amount">{{ r.round_type or "Round" }}</span> — {{ r.amount_usd|usd }}</div>
+          <div class="meta">
+            {{ r.announced_date or "date unknown" }} &middot; <span class="badge">{{ r.source }}</span>
+            {% if r.matched_entity_name %} &middot; matched filer: {{ r.matched_entity_name }}{% endif %}
+            {% if r.source_url %} &middot; <a href="{{ r.source_url }}" target="_blank" rel="noopener">source</a>{% endif %}
+          </div>
+        </div>
+        <form class="inline-form" method="post" action="{{ url_for('unreject_round_route', round_id=r.id) }}">
+          <button type="submit" class="small">Undo</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+  </details>
   {% endif %}
 </div>
 
