@@ -123,6 +123,28 @@ def test_confirm_sec_edgar_round_records_company_cik():
     assert db.get_company(company_id)["sec_cik"] == "0001234567"
 
 
+def test_total_funding_only_counts_confirmed_amounts():
+    company_id = db.add_company("Acme Inc", "", False, [])
+    db.add_funding_round(company_id, "Seed", 1_000_000, "2026-01-01", None, "manual", None)  # confirmed
+    db.add_funding_round(company_id, "Series A", 5_000_000, "2026-06-01", None, "web_research", "https://x")  # unconfirmed
+    round_id = [
+        r["id"] for r in db.get_company(company_id)["funding_rounds"] if r["round_type"] == "Series A"
+    ][0]
+    db.reject_round(round_id)  # rejected, still shouldn't count even if amount were confirmed
+
+    assert db.get_total_funding(company_id) == 1_000_000
+
+
+def test_grand_total_sums_across_companies():
+    c1 = db.add_company("Acme Inc", "", False, [])
+    c2 = db.add_company("Beta Co", "", False, [])
+    db.add_funding_round(c1, "Seed", 1_000_000, "2026-01-01", None, "manual", None)
+    db.add_funding_round(c2, "Seed", 2_000_000, "2026-01-01", None, "manual", None)
+    db.add_funding_round(c2, "Series A", 5_000_000, "2026-06-01", None, "web_research", "https://x")  # unconfirmed
+
+    assert db.get_grand_total_funding() == 3_000_000
+
+
 def test_add_note_and_notes_count():
     company_id = db.add_company("Acme Inc", "", False, [])
     db.add_note(company_id, "Heard they're raising a seed round")

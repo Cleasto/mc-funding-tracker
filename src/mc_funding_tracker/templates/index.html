@@ -6,6 +6,10 @@
     <p class="meta">No companies tracked yet. <a href="/company/new">Add one</a> to get started.</p>
   </div>
 {% else %}
+  <div class="card">
+    <div class="meta">Total confirmed funding across {{ companies|length }} compan{{ "y" if companies|length == 1 else "ies" }}</div>
+    <h2>{{ grand_total|usd }}</h2>
+  </div>
   <div class="card" style="padding: 0;">
     <table>
       <thead>
@@ -13,6 +17,7 @@
           <th>Company</th>
           <th>Founder(s)</th>
           <th>Dartmouth IP</th>
+          <th>Total Funding</th>
           <th>Last Round</th>
           <th>Notes</th>
           <th></th>
@@ -26,6 +31,7 @@
             {% for f in c.founders %}{{ f.name }}{% if f.class_year %} {{ f.class_year|classyear }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
           </td>
           <td>{% if c.dartmouth_ip %}<span class="badge">Yes</span>{% else %}<span class="meta">—</span>{% endif %}</td>
+          <td>{{ c.total_funding|usd }}</td>
           <td>
             {% if c.latest_round %}
               {{ c.latest_round.round_type }} {{ c.latest_round.amount_usd|usd }}

@@ -193,14 +193,47 @@ def get_notes_count(company_id: int, conn: Optional[sqlite3.Connection] = None) 
             conn.close()
 
 
+def get_total_funding(company_id: int, conn: Optional[sqlite3.Connection] = None) -> int:
+    """Return the sum of confirmed funding amounts (USD) for a company.
+
+    Unconfirmed/rejected rounds don't count — they haven't been verified as
+    real or as belonging to this company. Undisclosed amounts (NULL) are
+    excluded from the sum rather than treated as zero.
+    """
+    owns_conn = conn is None
+    conn = conn or _connect()
+    try:
+        row = conn.execute(
+            """
+            SELECT COALESCE(SUM(amount_usd), 0) AS total FROM funding_rounds
+            WHERE company_id = ? AND status = 'confirmed'
+            """,
+            (company_id,),
+        ).fetchone()
+        return row["total"]
+    finally:
+        if owns_conn:
+            conn.close()
+
+
+def get_grand_total_funding() -> int:
+    """Return the sum of confirmed funding amounts (USD) across all companies."""
+    with _connect() as conn:
+        row = conn.execute(
+            "SELECT COALESCE(SUM(amount_usd), 0) AS total FROM funding_rounds WHERE status = 'confirmed'"
+        ).fetchone()
+        return row["total"]
+
+
 def get_companies() -> List[dict]:
-    """Return all companies with founders, latest round, and note count attached."""
+    """Return all companies with founders, latest round, note count, and total funding attached."""
     with _connect() as conn:
         companies = [dict(r) for r in conn.execute("SELECT * FROM companies ORDER BY name").fetchall()]
         for company in companies:
             company["founders"] = get_founders_for_company(company["id"], conn)
             company["latest_round"] = get_latest_round(company["id"], conn)
             company["notes_count"] = get_notes_count(company["id"], conn)
+            company["total_funding"] = get_total_funding(company["id"], conn)
         return companies
 
 

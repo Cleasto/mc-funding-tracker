@@ -56,7 +56,8 @@ def create_app(config: Dict[str, Any]) -> Flask:
     @app.route("/")
     def index():
         companies = db.get_companies()
-        return render_template("index.html", companies=companies)
+        grand_total = db.get_grand_total_funding()
+        return render_template("index.html", companies=companies, grand_total=grand_total)
 
     @app.route("/company/new")
     def new_company():
