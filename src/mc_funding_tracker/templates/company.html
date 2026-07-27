@@ -7,9 +7,17 @@
     {% if company.website %}<a href="{{ company.website }}" target="_blank" rel="noopener">{{ company.website }}</a> &middot; {% endif %}
     {% for f in company.founders %}{{ f.name }}{% if f.class_year %} {{ f.class_year|classyear }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
   </p>
+  {% if researching %}
+  <p class="meta" style="margin-top: 12px;">
+    <span class="badge unconfirmed">⏳ Researching…</span>
+    This can take up to a couple of minutes — feel free to navigate away, it'll keep running in the background.
+  </p>
+  <script>setTimeout(function () { location.reload(); }, 4000);</script>
+  {% else %}
   <form class="research-form" method="post" action="{{ url_for('research_company', company_id=company.id) }}" style="margin-top: 12px;">
-    <button type="submit" class="primary" data-working-text="Working…">Run Research</button>
+    <button type="submit" class="primary" data-working-text="Starting…">Run Research</button>
   </form>
+  {% endif %}
 </div>
 
 {% set live_rounds = company.funding_rounds|rejectattr("status", "equalto", "rejected")|list %}

@@ -40,14 +40,21 @@
             {% endif %}
           </td>
           <td>
+            {% if c.id in researching_ids %}
+              <span class="badge unconfirmed">⏳ Researching…</span>
+            {% else %}
             <form class="inline-form research-form" method="post" action="{{ url_for('research_company', company_id=c.id) }}">
-              <button type="submit" class="small" data-working-text="Working…">Research</button>
+              <button type="submit" class="small" data-working-text="Starting…">Research</button>
             </form>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+  {% if researching_ids %}
+  <script>setTimeout(function () { location.reload(); }, 4000);</script>
+  {% endif %}
 {% endif %}
 {% endblock %}

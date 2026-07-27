@@ -1,9 +1,10 @@
 """Flask web dashboard for mc-funding-tracker.
 
-Research runs synchronously in the request handler (see research_company below) —
-there's no native GUI here, so there's no thread-safety class of bug to worry about
-the way meetcap's menu bar app had. A research pass just blocks one request for
-~10-30s, which is fine for occasional single-user use.
+Research (SEC EDGAR + a web-search API call) runs on a background thread tracked
+via jobs.py rather than blocking the request — it can take up to ~180s, which was
+long enough to hit real client-side timeouts when it ran synchronously. There's
+no native GUI here (unlike meetcap's menu bar app), so background threads have
+no thread-safety concerns beyond the job tracker's own lock.
 """
 from __future__ import annotations
 
@@ -16,7 +17,7 @@ from typing import Any, Dict
 from flask import Flask, flash, redirect, render_template, request, url_for
 from werkzeug.serving import make_server
 
-from . import db
+from . import db, jobs
 from .research import parse_funding_update, run_research
 
 logger = logging.getLogger(__name__)
@@ -57,7 +58,10 @@ def create_app(config: Dict[str, Any]) -> Flask:
     def index():
         companies = db.get_companies()
         grand_total = db.get_grand_total_funding()
-        return render_template("index.html", companies=companies, grand_total=grand_total)
+        researching_ids = jobs.running_ids()
+        return render_template(
+            "index.html", companies=companies, grand_total=grand_total, researching_ids=researching_ids
+        )
 
     @app.route("/company/new")
     def new_company():
@@ -93,26 +97,34 @@ def create_app(config: Dict[str, Any]) -> Flask:
         company = db.get_company(company_id)
         if company is None:
             return "Company not found", 404
-        return render_template("company.html", company=company)
+
+        result = jobs.pop_result(company_id)
+        if result is not None:
+            if result["status"] == "done":
+                summary = result["summary"]
+                msg = (
+                    f"Research complete: SEC EDGAR found {summary['edgar_found']} "
+                    f"({summary['edgar_inserted']} new), web search found {summary['web_found']} "
+                    f"({summary['web_inserted']} new)."
+                )
+                flash(msg, "error" if summary["errors"] else "success")
+                for err in summary["errors"]:
+                    flash(err, "error")
+            else:
+                flash(f"Research failed: {result['error']}", "error")
+
+        return render_template(
+            "company.html", company=company, researching=jobs.is_running(company_id)
+        )
 
     @app.route("/company/<int:company_id>/research", methods=["POST"])
     def research_company(company_id: int):
         company = db.get_company(company_id)
         if company is None:
             return "Company not found", 404
-        try:
-            summary = run_research(company_id, config)
-            msg = (
-                f"Research complete: SEC EDGAR found {summary['edgar_found']} "
-                f"({summary['edgar_inserted']} new), web search found {summary['web_found']} "
-                f"({summary['web_inserted']} new)."
-            )
-            flash(msg, "error" if summary["errors"] else "success")
-            for err in summary["errors"]:
-                flash(err, "error")
-        except Exception as e:
-            logger.exception(f"Research failed for company_id={company_id}")
-            flash(f"Research failed: {e}", "error")
+        started = jobs.start(company_id, lambda: run_research(company_id, config))
+        if not started:
+            flash("Research is already running for this company.", "error")
         return redirect(url_for("company_detail", company_id=company_id))
 
     @app.route("/company/<int:company_id>/report-update", methods=["POST"])

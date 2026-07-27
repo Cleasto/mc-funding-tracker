@@ -66,7 +66,10 @@ def search_web_for_funding(company_name: str, founder_names: str, config: Dict[s
             "or set ANTHROPIC_API_KEY."
         )
 
-    client = anthropic.Anthropic(api_key=api_key, timeout=90.0, max_retries=1)
+    # Runs on a background thread (see jobs.py), so there's no browser-facing
+    # pressure to keep this short — a multi-search research pass can legitimately
+    # take a couple of minutes.
+    client = anthropic.Anthropic(api_key=api_key, timeout=180.0, max_retries=1)
     model = config.get("claude_model", "claude-sonnet-5")
 
     founder_clause = f", founded by {founder_names}," if founder_names else ""
