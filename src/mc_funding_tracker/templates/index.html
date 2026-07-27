@@ -42,8 +42,8 @@
           </td>
           <td class="meta">{{ c.notes_count }}</td>
           <td>
-            <form class="inline-form" method="post" action="{{ url_for('research_company', company_id=c.id) }}">
-              <button type="submit" class="small">Research</button>
+            <form class="inline-form research-form" method="post" action="{{ url_for('research_company', company_id=c.id) }}">
+              <button type="submit" class="small" data-working-text="Working…">Research</button>
             </form>
           </td>
         </tr>

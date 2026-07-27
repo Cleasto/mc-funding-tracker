@@ -7,8 +7,8 @@
     {% if company.website %}<a href="{{ company.website }}" target="_blank" rel="noopener">{{ company.website }}</a> &middot; {% endif %}
     {% for f in company.founders %}{{ f.name }}{% if f.class_year %} {{ f.class_year|classyear }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
   </p>
-  <form method="post" action="{{ url_for('research_company', company_id=company.id) }}" style="margin-top: 12px;">
-    <button type="submit" class="primary">Run Research</button>
+  <form class="research-form" method="post" action="{{ url_for('research_company', company_id=company.id) }}" style="margin-top: 12px;">
+    <button type="submit" class="primary" data-working-text="Working…">Run Research</button>
   </form>
 </div>
 

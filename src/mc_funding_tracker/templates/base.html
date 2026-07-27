@@ -141,6 +141,9 @@ button.primary:hover, .btn.primary:hover {
   border-color: var(--accent-hover);
 }
 button.small, .btn.small { padding: 3px 9px; font-size: 12px; }
+button:disabled { opacity: .6; cursor: default; }
+button:disabled:hover { background: var(--surface); }
+button.primary:disabled:hover { background: var(--accent); }
 
 .inline-form { display: inline; }
 
@@ -206,5 +209,19 @@ button.small, .btn.small { padding: 3px 9px; font-size: 12px; }
   {% endwith %}
   {% block content %}{% endblock %}
 </div>
+<script>
+// Research passes run synchronously and can take up to ~30-90s (SEC EDGAR + a
+// web-search API call) — swap the button to a working state immediately so a
+// slow response doesn't read as the page being stuck/unresponsive.
+document.querySelectorAll("form.research-form").forEach(function (form) {
+  form.addEventListener("submit", function () {
+    var button = form.querySelector("button[type=submit]");
+    if (!button || button.disabled) return;
+    button.disabled = true;
+    button.dataset.originalText = button.textContent;
+    button.textContent = button.dataset.workingText || "Working…";
+  });
+});
+</script>
 </body>
 </html>
