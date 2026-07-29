@@ -63,9 +63,6 @@ def research(company_id: int):
         sys.exit(1)
 
     click.echo(
-        f"SEC EDGAR: found {summary['edgar_found']}, inserted {summary['edgar_inserted']}"
-    )
-    click.echo(
         f"Web research: found {summary['web_found']}, inserted {summary['web_inserted']}"
     )
     if summary["errors"]:

@@ -1,18 +1,24 @@
-"""Research orchestration: SEC EDGAR Form D lookup + Claude-driven web search.
+"""Research orchestration: Claude-driven web search for funding news.
 
-Both sources write into the same funding_rounds table via db.add_funding_round(),
-which dedupes on (company_id, source, round_type, announced_date, amount_usd) and
-defaults web-sourced rows to status='unconfirmed' so they get reviewed before being
-treated as fact.
+SEC EDGAR Form D lookup (edgar.py) is no longer run as part of this pipeline —
+in practice it rarely surfaced anything useful for these companies and mostly
+added noise (including outright wrong-company matches from its fuzzy
+company-name search). The module and its tests are left in place in case it's
+worth revisiting later; run_research() just doesn't call it anymore.
+
+Results write into the funding_rounds table via db.add_funding_round(), which
+dedupes on (company_id, source, round_type, announced_date, amount_usd) and
+defaults web-sourced rows to status='unconfirmed' so they get reviewed before
+being treated as fact.
 """
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import anthropic
 
-from . import db, edgar
+from . import db
 
 logger = logging.getLogger(__name__)
 
@@ -74,12 +80,18 @@ def search_web_for_funding(company_name: str, founder_names: str, config: Dict[s
 
     founder_clause = f", founded by {founder_names}," if founder_names else ""
     prompt = (
-        f'Research recent fundraising for the startup "{company_name}"{founder_clause} '
+        f'Research the fundraising history for the startup "{company_name}"{founder_clause} '
         "by searching the web for funding announcements, press releases, and news coverage. "
+        "Include past rounds, not just recent news — a round from several years ago is just as "
+        "relevant here as one announced this week; do not limit yourself to only what's new. "
         "For each distinct funding round you find, note the round type (e.g. Seed, Series A), "
         "the amount raised in USD if disclosed, the announcement date, investors involved, "
-        "and the source URL. Once you've finished searching, call submit_funding_rounds with "
-        "everything you found — call it with an empty rounds list if you find nothing."
+        "and the source URL. "
+        "You have a maximum of 5 searches — once you've used them (or sooner, if you've already "
+        "found what you need), stop searching and call submit_funding_rounds with what you found. "
+        "Do not keep issuing new searches after you run out; report based on what you already have "
+        "rather than retrying. Call it with an empty rounds list only if you find no funding "
+        "history at all."
     )
 
     try:
@@ -98,9 +110,27 @@ def search_web_for_funding(company_name: str, founder_names: str, config: Dict[s
             "or renamed. Update claude_model in ~/.config/mc-funding-tracker/config.yaml."
         ) from e
 
+    # Log the actual searches performed and what came back, so a "found nothing" result
+    # can be debugged from the log later instead of having to manually replay the search
+    # to figure out whether the model searched poorly or genuinely found nothing.
+    found_rounds: Optional[List[dict]] = None
     for block in response.content:
-        if getattr(block, "type", None) == "tool_use" and block.name == "submit_funding_rounds":
-            return block.input.get("rounds", [])
+        block_type = getattr(block, "type", None)
+        if block_type == "server_tool_use" and getattr(block, "name", None) == "web_search":
+            logger.info(f"[{company_name}] web_search query: {block.input.get('query')!r}")
+        elif block_type == "web_search_tool_result":
+            content = block.content
+            if isinstance(content, list):
+                urls = [getattr(r, "url", None) for r in content]
+                logger.info(f"[{company_name}] web_search returned {len(content)} result(s): {urls}")
+            else:
+                logger.info(f"[{company_name}] web_search error: {getattr(content, 'error_code', content)}")
+        elif block_type == "tool_use" and block.name == "submit_funding_rounds":
+            found_rounds = block.input.get("rounds", [])
+            logger.info(f"[{company_name}] submit_funding_rounds called with {len(found_rounds)} round(s)")
+
+    if found_rounds is not None:
+        return found_rounds
 
     logger.info(
         f"Claude did not submit structured rounds for {company_name!r} "
@@ -188,42 +218,18 @@ def parse_funding_update(text: str, config: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def run_research(company_id: int, config: Dict[str, Any]) -> Dict[str, Any]:
-    """Run SEC EDGAR + web research for a company and store results.
+    """Run web research for a company and store results.
 
-    Returns a summary dict: {edgar_found, edgar_inserted, web_found, web_inserted, errors}.
+    Returns a summary dict: {web_found, web_inserted, errors}.
     """
     company = db.get_company(company_id)
     if company is None:
         raise ValueError(f"No company with id {company_id}")
 
     founder_names = ", ".join(f["name"] for f in company["founders"])
-    summary = {"edgar_found": 0, "edgar_inserted": 0, "web_found": 0, "web_inserted": 0, "errors": []}
+    summary = {"web_found": 0, "web_inserted": 0, "errors": []}
 
     logger.info(f"Starting research for company_id={company_id} ({company['name']})")
-
-    try:
-        blocked_ciks = db.get_rejected_ciks(company_id)
-        edgar_rounds = edgar.get_form_d_rounds(
-            company["name"], config.get("sec_contact_email", ""), blocked_ciks=blocked_ciks
-        )
-        summary["edgar_found"] = len(edgar_rounds)
-        for r in edgar_rounds:
-            inserted = db.add_funding_round(
-                company_id=company_id,
-                round_type=r["round_type"],
-                amount_usd=r["amount_usd"],
-                announced_date=r["announced_date"],
-                investors=r["investors"],
-                source="sec_edgar",
-                source_url=r["source_url"],
-                cik=r["cik"],
-                matched_entity_name=r["entity_name"],
-            )
-            if inserted:
-                summary["edgar_inserted"] += 1
-    except Exception as e:
-        logger.exception(f"SEC EDGAR lookup failed for {company['name']}")
-        summary["errors"].append(f"SEC EDGAR: {e}")
 
     try:
         web_rounds = search_web_for_funding(company["name"], founder_names, config)

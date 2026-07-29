@@ -1,10 +1,10 @@
 """Flask web dashboard for mc-funding-tracker.
 
-Research (SEC EDGAR + a web-search API call) runs on a background thread tracked
-via jobs.py rather than blocking the request — it can take up to ~180s, which was
-long enough to hit real client-side timeouts when it ran synchronously. There's
-no native GUI here (unlike meetcap's menu bar app), so background threads have
-no thread-safety concerns beyond the job tracker's own lock.
+Research (a web-search API call) runs on a background thread tracked via jobs.py
+rather than blocking the request — it can take up to ~180s, which was long
+enough to hit real client-side timeouts when it ran synchronously. There's no
+native GUI here (unlike meetcap's menu bar app), so background threads have no
+thread-safety concerns beyond the job tracker's own lock.
 """
 from __future__ import annotations
 
@@ -103,8 +103,7 @@ def create_app(config: Dict[str, Any]) -> Flask:
             if result["status"] == "done":
                 summary = result["summary"]
                 msg = (
-                    f"Research complete: SEC EDGAR found {summary['edgar_found']} "
-                    f"({summary['edgar_inserted']} new), web search found {summary['web_found']} "
+                    f"Research complete: web search found {summary['web_found']} "
                     f"({summary['web_inserted']} new)."
                 )
                 flash(msg, "error" if summary["errors"] else "success")
