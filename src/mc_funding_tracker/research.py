@@ -80,7 +80,11 @@ def search_web_for_funding(company_name: str, founder_names: str, config: Dict[s
 
     founder_clause = f", founded by {founder_names}," if founder_names else ""
     prompt = (
-        f'Research the fundraising history for the startup "{company_name}"{founder_clause}. '
+        f'Research the fundraising history for the company "{company_name}"{founder_clause}. '
+        "This is about its funding history, not its current status — report its private "
+        "funding rounds even if it has since IPO'd, been acquired, or grown into a large, "
+        "well-known company. Being public or well-established now doesn't make its earlier "
+        "venture rounds any less relevant; do not treat that as a reason to report nothing. "
         "Start by searching for a funding-history aggregator page for this company — e.g. its "
         "Crunchbase, Tracxn, PitchBook, or CB Insights profile — since these compile a company's "
         "entire round-by-round funding history in one place. For an established company with many "
