@@ -80,8 +80,14 @@ def search_web_for_funding(company_name: str, founder_names: str, config: Dict[s
 
     founder_clause = f", founded by {founder_names}," if founder_names else ""
     prompt = (
-        f'Research the fundraising history for the startup "{company_name}"{founder_clause} '
-        "by searching the web for funding announcements, press releases, and news coverage. "
+        f'Research the fundraising history for the startup "{company_name}"{founder_clause}. '
+        "Start by searching for a funding-history aggregator page for this company — e.g. its "
+        "Crunchbase, Tracxn, PitchBook, or CB Insights profile — since these compile a company's "
+        "entire round-by-round funding history in one place. For an established company with many "
+        "rounds, one good aggregator page can cover everything and is far more efficient than "
+        "searching for each round's news coverage individually; only fall back to searching for "
+        "individual press releases/news articles per round if no aggregator page turns up, or to "
+        "confirm/fill in specifics an aggregator left vague. "
         "Include past rounds, not just recent news — a round from several years ago is just as "
         "relevant here as one announced this week; do not limit yourself to only what's new. "
         "For each distinct funding round you find, note the round type (e.g. Seed, Series A), "

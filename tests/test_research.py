@@ -1,5 +1,6 @@
-"""Tests for research.parse_funding_update. No real network/API calls —
-the Anthropic client is monkeypatched with a fake that returns canned responses."""
+"""Tests for research.parse_funding_update and research.search_web_for_funding.
+No real network/API calls — the Anthropic client is monkeypatched with a fake
+that returns canned responses."""
 import pytest
 
 from mc_funding_tracker import research
