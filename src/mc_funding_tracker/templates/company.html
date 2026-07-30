@@ -2,10 +2,34 @@
 {% block title %}{{ company.name }} – mc-funding-tracker{% endblock %}
 {% block content %}
 <div class="card">
-  <h2>{{ company.name }}{% if company.dartmouth_ip %} <span class="badge">Dartmouth IP</span>{% endif %}</h2>
-  {% if company.website %}
-  <p class="meta"><a href="{{ company.website }}" target="_blank" rel="noopener">{{ company.website }}</a></p>
-  {% endif %}
+  <div id="view-company-{{ company.id }}">
+    <h2>
+      {{ company.name }}{% if company.dartmouth_ip %} <span class="badge">Dartmouth IP</span>{% endif %}
+      <button type="button" class="icon-btn" onclick="toggleEdit('company-{{ company.id }}')" title="Edit company" aria-label="Edit company">🔧</button>
+    </h2>
+    {% if company.website %}
+    <p class="meta"><a href="{{ company.website }}" target="_blank" rel="noopener">{{ company.website }}</a></p>
+    {% endif %}
+  </div>
+  <form id="edit-company-{{ company.id }}" hidden method="post" action="{{ url_for('edit_company_route', company_id=company.id) }}" style="margin-top: 10px;">
+    <div class="field">
+      <label for="company-name-{{ company.id }}">Company name</label>
+      <input type="text" id="company-name-{{ company.id }}" name="name" value="{{ company.name }}" required>
+    </div>
+    <div class="field">
+      <label for="company-website-{{ company.id }}">Website</label>
+      <input type="url" id="company-website-{{ company.id }}" name="website" value="{{ company.website or '' }}" placeholder="https://example.com">
+    </div>
+    <div class="field">
+      <label for="company-dartmouth-ip-{{ company.id }}">Dartmouth IP?</label>
+      <select id="company-dartmouth-ip-{{ company.id }}" name="dartmouth_ip">
+        <option value="no" {% if not company.dartmouth_ip %}selected{% endif %}>No</option>
+        <option value="yes" {% if company.dartmouth_ip %}selected{% endif %}>Yes</option>
+      </select>
+    </div>
+    <button type="submit" class="small primary">Save</button>
+    <button type="button" class="small" onclick="toggleEdit('company-{{ company.id }}')">Cancel</button>
+  </form>
   <div class="chip-list">
     {% for f in company.founders %}
     <span id="view-founder-{{ f.id }}" class="chip">

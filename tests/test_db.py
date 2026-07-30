@@ -154,6 +154,17 @@ def test_add_note_and_notes_count():
     assert db.get_notes_count(company_id) == 1
 
 
+def test_update_company_changes_name_website_and_dartmouth_ip():
+    company_id = db.add_company("Acme Inc", "https://acme.example", False, [])
+
+    db.update_company(company_id, "Acme Corp", "https://acme.new", True)
+
+    company = db.get_company(company_id)
+    assert company["name"] == "Acme Corp"
+    assert company["website"] == "https://acme.new"
+    assert company["dartmouth_ip"] == 1
+
+
 def test_add_founder_links_new_founder_to_existing_company():
     company_id = db.add_company("Acme Inc", "", False, [{"name": "Jane Doe", "class_year": 2018}])
 

@@ -395,6 +395,15 @@ def get_rejected_ciks(company_id: int) -> List[str]:
         return [r["cik"] for r in rows]
 
 
+def update_company(company_id: int, name: str, website: str, dartmouth_ip: bool) -> None:
+    """Update a company's name, website, and Dartmouth IP flag."""
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE companies SET name = ?, website = ?, dartmouth_ip = ? WHERE id = ?",
+            (name, website, 1 if dartmouth_ip else 0, company_id),
+        )
+
+
 def add_founder(company_id: int, name: str, class_year: Optional[int]) -> None:
     """Add a new founder and link them to an existing company."""
     with _connect() as conn:

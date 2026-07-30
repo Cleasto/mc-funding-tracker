@@ -164,6 +164,18 @@ def create_app(config: Dict[str, Any]) -> Flask:
         db.unreject_round(round_id)
         return redirect(request.referrer or url_for("index"))
 
+    @app.route("/company/<int:company_id>/edit", methods=["POST"])
+    def edit_company_route(company_id: int):
+        name = request.form.get("name", "").strip()
+        website = request.form.get("website", "").strip()
+        dartmouth_ip = request.form.get("dartmouth_ip") == "yes"
+        if not name:
+            flash("Company name is required.", "error")
+            return redirect(url_for("company_detail", company_id=company_id))
+        db.update_company(company_id, name, website, dartmouth_ip)
+        flash("Company updated.", "success")
+        return redirect(url_for("company_detail", company_id=company_id))
+
     @app.route("/company/<int:company_id>/founder", methods=["POST"])
     def add_founder_route(company_id: int):
         name = request.form.get("name", "").strip()
