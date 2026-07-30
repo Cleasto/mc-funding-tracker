@@ -154,6 +154,31 @@ def test_add_note_and_notes_count():
     assert db.get_notes_count(company_id) == 1
 
 
+def test_update_founder_changes_name_and_class_year():
+    company_id = db.add_company("Acme Inc", "", False, [{"name": "Jane Doe", "class_year": 2018}])
+    founder_id = db.get_company(company_id)["founders"][0]["id"]
+
+    db.update_founder(founder_id, "Jane D. Smith", 2019)
+
+    founder = db.get_company(company_id)["founders"][0]
+    assert founder["name"] == "Jane D. Smith"
+    assert founder["class_year"] == 2019
+
+
+def test_update_funding_round_changes_editable_fields():
+    company_id = db.add_company("Acme Inc", "", False, [])
+    db.add_funding_round(company_id, "Seed", 1_000_000, "2026-01-01", None, "internal", None)
+    round_id = db.get_company(company_id)["funding_rounds"][0]["id"]
+
+    db.update_funding_round(round_id, "Series A", 5_000_000, "2026-06-01", "Acme Ventures")
+
+    round_ = db.get_company(company_id)["funding_rounds"][0]
+    assert round_["round_type"] == "Series A"
+    assert round_["amount_usd"] == 5_000_000
+    assert round_["announced_date"] == "2026-06-01"
+    assert round_["investors"] == "Acme Ventures"
+
+
 def test_get_companies_lists_latest_round():
     company_id = db.add_company("Acme Inc", "", False, [{"name": "Jane Doe", "class_year": 2018}])
     db.add_funding_round(company_id, "Seed", 1_000_000, "2026-01-01", None, "internal", None)

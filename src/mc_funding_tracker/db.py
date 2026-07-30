@@ -395,6 +395,34 @@ def get_rejected_ciks(company_id: int) -> List[str]:
         return [r["cik"] for r in rows]
 
 
+def update_founder(founder_id: int, name: str, class_year: Optional[int]) -> None:
+    """Update a founder's name and class year."""
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE founders SET name = ?, class_year = ? WHERE id = ?",
+            (name, class_year, founder_id),
+        )
+
+
+def update_funding_round(
+    round_id: int,
+    round_type: Optional[str],
+    amount_usd: Optional[int],
+    announced_date: Optional[str],
+    investors: Optional[str],
+) -> None:
+    """Update the editable fields of a funding round (status/source are untouched)."""
+    with _connect() as conn:
+        conn.execute(
+            """
+            UPDATE funding_rounds
+            SET round_type = ?, amount_usd = ?, announced_date = ?, investors = ?
+            WHERE id = ?
+            """,
+            (round_type, amount_usd, announced_date, investors, round_id),
+        )
+
+
 def add_note(company_id: int, body: str) -> None:
     """Add a freeform note to a company."""
     with _connect() as conn:

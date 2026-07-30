@@ -164,6 +164,29 @@ def create_app(config: Dict[str, Any]) -> Flask:
         db.unreject_round(round_id)
         return redirect(request.referrer or url_for("index"))
 
+    @app.route("/founder/<int:founder_id>/edit", methods=["POST"])
+    def edit_founder_route(founder_id: int):
+        name = request.form.get("name", "").strip()
+        class_year_raw = request.form.get("class_year", "").strip()
+        class_year = int(class_year_raw) if class_year_raw.isdigit() else None
+        if not name:
+            flash("Founder name is required.", "error")
+            return redirect(request.referrer or url_for("index"))
+        db.update_founder(founder_id, name, class_year)
+        flash("Founder updated.", "success")
+        return redirect(request.referrer or url_for("index"))
+
+    @app.route("/round/<int:round_id>/edit", methods=["POST"])
+    def edit_round_route(round_id: int):
+        round_type = request.form.get("round_type", "").strip() or None
+        amount_raw = request.form.get("amount_usd", "").strip()
+        amount_usd = int(amount_raw) if amount_raw.isdigit() else None
+        announced_date = request.form.get("announced_date", "").strip() or None
+        investors = request.form.get("investors", "").strip() or None
+        db.update_funding_round(round_id, round_type, amount_usd, announced_date, investors)
+        flash("Funding round updated.", "success")
+        return redirect(request.referrer or url_for("index"))
+
     return app
 
 

@@ -3,10 +3,23 @@
 {% block content %}
 <div class="card">
   <h2>{{ company.name }}{% if company.dartmouth_ip %} <span class="badge">Dartmouth IP</span>{% endif %}</h2>
-  <p class="meta">
-    {% if company.website %}<a href="{{ company.website }}" target="_blank" rel="noopener">{{ company.website }}</a> &middot; {% endif %}
-    {% for f in company.founders %}{{ f.name }}{% if f.class_year %} {{ f.class_year|classyear }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}
-  </p>
+  {% if company.website %}
+  <p class="meta"><a href="{{ company.website }}" target="_blank" rel="noopener">{{ company.website }}</a></p>
+  {% endif %}
+  <div class="chip-list">
+    {% for f in company.founders %}
+    <span id="view-founder-{{ f.id }}" class="chip">
+      {{ f.name }}{% if f.class_year %} {{ f.class_year|classyear }}{% endif %}
+      <button type="button" class="icon-btn" onclick="toggleEdit('founder-{{ f.id }}')" title="Edit founder" aria-label="Edit founder">🔧</button>
+    </span>
+    <form id="edit-founder-{{ f.id }}" class="chip-edit" hidden method="post" action="{{ url_for('edit_founder_route', founder_id=f.id) }}">
+      <input type="text" name="name" value="{{ f.name }}" required>
+      <input type="number" name="class_year" value="{{ f.class_year or '' }}" placeholder="Class year">
+      <button type="submit" class="small primary">Save</button>
+      <button type="button" class="small" onclick="toggleEdit('founder-{{ f.id }}')">Cancel</button>
+    </form>
+    {% endfor %}
+  </div>
   {% if researching %}
   <p class="meta" style="margin-top: 12px;">
     <span class="badge unconfirmed">⏳ Researching…</span>
@@ -30,7 +43,7 @@
   {% else %}
     <ul class="round-list">
       {% for r in live_rounds %}
-      <li class="round-item">
+      <li class="round-item" id="view-round-{{ r.id }}">
         <div class="details">
           <div><span class="amount">{{ r.round_type or "Round" }}</span> — {{ r.amount_usd|usd }}</div>
           <div class="meta">
@@ -55,10 +68,35 @@
             <button type="submit" class="small">Confirm</button>
           </form>
           {% endif %}
+          <button type="button" class="icon-btn" onclick="toggleEdit('round-{{ r.id }}')" title="Edit round" aria-label="Edit round">🔧</button>
           <form class="inline-form" method="post" action="{{ url_for('reject_round_route', round_id=r.id) }}">
-            <button type="submit" class="small">Not this company</button>
+            <button type="submit" class="small">Ignore</button>
           </form>
         </div>
+      </li>
+      <li class="round-item" id="edit-round-{{ r.id }}" hidden>
+        <form class="round-edit-fields" method="post" action="{{ url_for('edit_round_route', round_id=r.id) }}">
+          <div class="field">
+            <label for="round_type-{{ r.id }}">Round type</label>
+            <input type="text" id="round_type-{{ r.id }}" name="round_type" value="{{ r.round_type or '' }}">
+          </div>
+          <div class="field">
+            <label for="amount_usd-{{ r.id }}">Amount (USD)</label>
+            <input type="number" id="amount_usd-{{ r.id }}" name="amount_usd" value="{{ r.amount_usd if r.amount_usd is not none else '' }}">
+          </div>
+          <div class="field">
+            <label for="announced_date-{{ r.id }}">Announced date</label>
+            <input type="text" id="announced_date-{{ r.id }}" name="announced_date" value="{{ r.announced_date or '' }}" placeholder="YYYY-MM-DD">
+          </div>
+          <div class="field">
+            <label for="investors-{{ r.id }}">Investors</label>
+            <input type="text" id="investors-{{ r.id }}" name="investors" value="{{ r.investors or '' }}">
+          </div>
+          <div class="edit-actions">
+            <button type="submit" class="small primary">Save</button>
+            <button type="button" class="small" onclick="toggleEdit('round-{{ r.id }}')">Cancel</button>
+          </div>
+        </form>
       </li>
       {% endfor %}
     </ul>

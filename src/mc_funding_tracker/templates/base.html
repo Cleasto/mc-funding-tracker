@@ -13,8 +13,8 @@
   --border: #e0e0e5;
   --text: #1d1d1f;
   --text-secondary: #6e6e73;
-  --accent: #0071e3;
-  --accent-hover: #0077ed;
+  --accent: #00693e;
+  --accent-hover: #007a48;
   --badge-bg: #e8f0fe;
   --badge-text: #1a56db;
   --confirmed-bg: #f0fdf4;
@@ -33,8 +33,8 @@
     --border: #3a3a3c;
     --text: #f5f5f7;
     --text-secondary: #98989d;
-    --accent: #2997ff;
-    --accent-hover: #409cff;
+    --accent: #2f9e6b;
+    --accent-hover: #3dbf82;
     --badge-bg: #1e3a5f;
     --badge-text: #70b8ff;
     --confirmed-bg: #0a2e1a;
@@ -188,13 +188,68 @@ button.primary:disabled:hover { background: var(--accent); }
 .round-item .details { flex: 1; }
 .round-item .amount { font-weight: 600; }
 
+/* [hidden] beats the UA stylesheet by specificity alone, but author rules like
+   .round-item { display: flex } still win by cascade order — force it. */
+[hidden] { display: none !important; }
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--text-secondary);
+}
+.icon-btn:hover { background: var(--bg); border-color: var(--border); }
+
+.chip-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 6px 4px 12px;
+  font-size: 13px;
+}
+.chip-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px;
+}
+.chip-edit input[type=text], .chip-edit input[type=number] {
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+}
+.chip-edit input[name=name] { width: 140px; }
+.chip-edit input[name=class_year] { width: 70px; }
+
+.round-edit-fields { display: flex; flex-wrap: wrap; gap: 10px; padding: 10px 0; width: 100%; }
+.round-edit-fields .field { flex: 1; min-width: 140px; margin-bottom: 0; }
+.round-edit-fields .edit-actions { display: flex; align-items: flex-end; gap: 8px; }
+
 {% block extra_style %}{% endblock %}
 </style>
 </head>
 <body>
 <div class="container">
   <header>
-    <a href="/"><h1>mc-funding-tracker</h1></a>
+    <a href="/"><h1>Magnuson Founder Funding</h1></a>
     <nav>
       <a href="/">Companies</a>
       <a href="/company/new" class="btn primary">+ Add Company</a>
@@ -222,6 +277,15 @@ document.querySelectorAll("form.research-form").forEach(function (form) {
     button.textContent = button.dataset.workingText || "Working…";
   });
 });
+
+// Wrench buttons toggle a matching "view-<id>" / "edit-<id>" pair between
+// display and inline edit — no page reload needed to open or cancel the form.
+function toggleEdit(id) {
+  var view = document.getElementById("view-" + id);
+  var edit = document.getElementById("edit-" + id);
+  if (view) view.hidden = !view.hidden;
+  if (edit) edit.hidden = !edit.hidden;
+}
 </script>
 </body>
 </html>
