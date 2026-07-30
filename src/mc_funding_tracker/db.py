@@ -395,6 +395,19 @@ def get_rejected_ciks(company_id: int) -> List[str]:
         return [r["cik"] for r in rows]
 
 
+def add_founder(company_id: int, name: str, class_year: Optional[int]) -> None:
+    """Add a new founder and link them to an existing company."""
+    with _connect() as conn:
+        cursor = conn.execute(
+            "INSERT INTO founders (name, class_year) VALUES (?, ?)",
+            (name, class_year),
+        )
+        conn.execute(
+            "INSERT INTO founder_companies (founder_id, company_id) VALUES (?, ?)",
+            (cursor.lastrowid, company_id),
+        )
+
+
 def update_founder(founder_id: int, name: str, class_year: Optional[int]) -> None:
     """Update a founder's name and class year."""
     with _connect() as conn:

@@ -19,6 +19,15 @@
       <button type="button" class="small" onclick="toggleEdit('founder-{{ f.id }}')">Cancel</button>
     </form>
     {% endfor %}
+    <span id="view-add-founder" class="chip">
+      <button type="button" class="icon-btn" onclick="toggleEdit('add-founder')" title="Add founder" aria-label="Add founder">+</button>
+    </span>
+    <form id="edit-add-founder" class="chip-edit" hidden method="post" action="{{ url_for('add_founder_route', company_id=company.id) }}">
+      <input type="text" name="name" placeholder="Founder name" required>
+      <input type="number" name="class_year" placeholder="Class year (e.g. 2018)">
+      <button type="submit" class="small primary">Add</button>
+      <button type="button" class="small" onclick="toggleEdit('add-founder')">Cancel</button>
+    </form>
   </div>
   {% if researching %}
   <p class="meta" style="margin-top: 12px;">

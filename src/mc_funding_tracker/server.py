@@ -164,6 +164,18 @@ def create_app(config: Dict[str, Any]) -> Flask:
         db.unreject_round(round_id)
         return redirect(request.referrer or url_for("index"))
 
+    @app.route("/company/<int:company_id>/founder", methods=["POST"])
+    def add_founder_route(company_id: int):
+        name = request.form.get("name", "").strip()
+        class_year_raw = request.form.get("class_year", "").strip()
+        class_year = int(class_year_raw) if class_year_raw.isdigit() else None
+        if not name:
+            flash("Founder name is required.", "error")
+            return redirect(url_for("company_detail", company_id=company_id))
+        db.add_founder(company_id, name, class_year)
+        flash(f"Added {name} as a founder.", "success")
+        return redirect(url_for("company_detail", company_id=company_id))
+
     @app.route("/founder/<int:founder_id>/edit", methods=["POST"])
     def edit_founder_route(founder_id: int):
         name = request.form.get("name", "").strip()

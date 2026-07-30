@@ -154,6 +154,15 @@ def test_add_note_and_notes_count():
     assert db.get_notes_count(company_id) == 1
 
 
+def test_add_founder_links_new_founder_to_existing_company():
+    company_id = db.add_company("Acme Inc", "", False, [{"name": "Jane Doe", "class_year": 2018}])
+
+    db.add_founder(company_id, "Alex Smith", 2019)
+
+    founders = {f["name"] for f in db.get_company(company_id)["founders"]}
+    assert founders == {"Jane Doe", "Alex Smith"}
+
+
 def test_update_founder_changes_name_and_class_year():
     company_id = db.add_company("Acme Inc", "", False, [{"name": "Jane Doe", "class_year": 2018}])
     founder_id = db.get_company(company_id)["founders"][0]["id"]
