@@ -3,10 +3,13 @@
 {% block content %}
 <div class="card">
   <div id="view-company-{{ company.id }}">
-    <h2>
-      {{ company.name }}{% if company.dartmouth_ip %} <span class="badge">Dartmouth IP</span>{% endif %}
-      <button type="button" class="icon-btn" onclick="toggleEdit('company-{{ company.id }}')" title="Edit company" aria-label="Edit company">🔧</button>
-    </h2>
+    <div class="company-header-row">
+      <h2>
+        {{ company.name }}{% if company.dartmouth_ip %} <span class="badge">Dartmouth IP</span>{% endif %}
+        <button type="button" class="icon-btn" onclick="toggleEdit('company-{{ company.id }}')" title="Edit company" aria-label="Edit company">🔧</button>
+      </h2>
+      <div class="total-raised">Total raised: <strong>{{ company.total_funding|usd }}</strong></div>
+    </div>
     {% if company.website %}
     <p class="meta"><a href="{{ company.website }}" target="_blank" rel="noopener">{{ company.website }}</a></p>
     {% endif %}

@@ -262,6 +262,7 @@ def get_company(company_id: int) -> Optional[dict]:
                 (company_id,),
             ).fetchall()
         ]
+        company["total_funding"] = get_total_funding(company_id, conn)
         return company
 
 

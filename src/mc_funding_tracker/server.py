@@ -56,11 +56,35 @@ def create_app(config: Dict[str, Any]) -> Flask:
 
     @app.route("/")
     def index():
+        # Default-direction-per-column (name starts ascending, total_funding starts
+        # descending — highest funding first is the useful default for a money column)
+        # so the first click on a header does something sensible before toggling.
+        default_dirs = {"name": "asc", "total_funding": "desc"}
+        sort = request.args.get("sort", "name")
+        if sort not in default_dirs:
+            sort = "name"
+        direction = request.args.get("dir", default_dirs[sort])
+        if direction not in ("asc", "desc"):
+            direction = default_dirs[sort]
+
         companies = db.get_companies()
+        if sort == "name":
+            companies.sort(key=lambda c: c["name"].lower(), reverse=(direction == "desc"))
+        else:
+            companies.sort(key=lambda c: c["total_funding"], reverse=(direction == "desc"))
+
+        next_dir = {col: ("desc" if (sort == col and direction == "asc") else "asc" if (sort == col and direction == "desc") else default_dirs[col]) for col in default_dirs}
+
         grand_total = db.get_grand_total_funding()
         researching_ids = jobs.running_ids()
         return render_template(
-            "index.html", companies=companies, grand_total=grand_total, researching_ids=researching_ids
+            "index.html",
+            companies=companies,
+            grand_total=grand_total,
+            researching_ids=researching_ids,
+            sort=sort,
+            direction=direction,
+            next_dir=next_dir,
         )
 
     @app.route("/company/new")

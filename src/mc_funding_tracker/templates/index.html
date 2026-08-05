@@ -14,10 +14,10 @@
     <table>
       <thead>
         <tr>
-          <th>Company</th>
+          <th><a href="{{ url_for('index', sort='name', dir=next_dir['name']) }}" class="sort-link">Company{% if sort == 'name' %} <span class="sort-arrow">{{ '▲' if direction == 'asc' else '▼' }}</span>{% endif %}</a></th>
           <th>Founder(s)</th>
           <th>Dartmouth IP</th>
-          <th>Total Funding</th>
+          <th><a href="{{ url_for('index', sort='total_funding', dir=next_dir['total_funding']) }}" class="sort-link">Total Funding{% if sort == 'total_funding' %} <span class="sort-arrow">{{ '▲' if direction == 'asc' else '▼' }}</span>{% endif %}</a></th>
           <th>Last Round</th>
           <th></th>
         </tr>
