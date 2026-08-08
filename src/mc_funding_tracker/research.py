@@ -74,8 +74,10 @@ def search_web_for_funding(company_name: str, founder_names: str, config: Dict[s
 
     # Runs on a background thread (see jobs.py), so there's no browser-facing
     # pressure to keep this short — a multi-search research pass can legitimately
-    # take a couple of minutes.
-    client = anthropic.Anthropic(api_key=api_key, timeout=180.0, max_retries=1)
+    # take a couple of minutes. max_tokens=8192 below means large/noisy companies
+    # can legitimately take longer than 180s to generate (non-streaming, so httpx's
+    # read timeout is one long wait for the full response) — give it more room.
+    client = anthropic.Anthropic(api_key=api_key, timeout=300.0, max_retries=1)
     model = config.get("claude_model", "claude-sonnet-5")
 
     founder_clause = f", founded by {founder_names}," if founder_names else ""
@@ -96,6 +98,11 @@ def search_web_for_funding(company_name: str, founder_names: str, config: Dict[s
         "don't try to review all of them. Look at the top 2-3 most relevant results per search "
         "(the aggregator profile itself, or clearly on-topic press coverage) and move on; skip "
         "results that are duplicates, off-topic, or about a different company with a similar name. "
+        "Never repeat the same or near-identical query — a search engine returns essentially the "
+        "same results for the same query, so re-issuing it wastes a search without learning anything "
+        "new. If the aggregator page you already found doesn't have enough detail on a specific round, "
+        "search for that round specifically (e.g. its round letter, year, or an investor name) rather "
+        "than searching the same generic terms again. "
         "Include past rounds, not just recent news — a round from several years ago is just as "
         "relevant here as one announced this week; do not limit yourself to only what's new. "
         "For each distinct funding round you find, note the round type (e.g. Seed, Series A), "
@@ -111,7 +118,7 @@ def search_web_for_funding(company_name: str, founder_names: str, config: Dict[s
     try:
         response = client.messages.create(
             model=model,
-            max_tokens=4096,
+            max_tokens=8192,
             tools=[
                 {"type": "web_search_20260209", "name": "web_search", "max_uses": 5},
                 SUBMIT_ROUNDS_TOOL,
