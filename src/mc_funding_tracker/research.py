@@ -161,45 +161,59 @@ def search_web_for_funding(company_name: str, founder_names: str, config: Dict[s
 
 
 PARSE_UPDATE_TOOL = {
-    "name": "submit_funding_round",
-    "description": "Submit the funding round described in the user's free-text update.",
+    "name": "submit_funding_rounds",
+    "description": "Submit the funding round(s) described in the user's free-text update.",
     "input_schema": {
         "type": "object",
         "properties": {
-            "round_type": {
-                "type": "string",
-                "description": "e.g. Seed, Series A, Series B, Bridge, Grant",
-            },
-            "amount_usd": {
-                "type": ["integer", "null"],
-                "description": (
-                    "Amount raised in USD, ONLY if a specific figure is explicitly stated in the "
-                    "text (e.g. '$2M', '2 million dollars'). Null if no figure is stated, even if "
-                    "you could estimate a plausible one — never guess or infer an amount."
-                ),
-            },
-            "announced_date": {
-                "type": ["string", "null"],
-                "description": (
-                    "YYYY-MM-DD if a specific day is given. If only a month/year is mentioned "
-                    "(e.g. 'July 2025'), use the first of that month (2025-07-01). Null if no "
-                    "date at all is mentioned — never guess a date."
-                ),
-            },
-            "investors": {
-                "type": ["string", "null"],
-                "description": "Investor names explicitly named in the text, or null if none are named — never invent investor names.",
-            },
+            "rounds": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "round_type": {
+                            "type": "string",
+                            "description": "e.g. Seed, Series A, Series B, Bridge, Grant",
+                        },
+                        "amount_usd": {
+                            "type": ["integer", "null"],
+                            "description": (
+                                "Amount raised in USD, ONLY if a specific figure is explicitly "
+                                "stated in the text (e.g. '$2M', '2 million dollars'). Null if no "
+                                "figure is stated, even if you could estimate a plausible one — "
+                                "never guess or infer an amount."
+                            ),
+                        },
+                        "announced_date": {
+                            "type": ["string", "null"],
+                            "description": (
+                                "YYYY-MM-DD if a specific day is given. If only a month/year is "
+                                "mentioned (e.g. 'July 2025'), use the first of that month "
+                                "(2025-07-01). Null if no date at all is mentioned — never guess "
+                                "a date."
+                            ),
+                        },
+                        "investors": {
+                            "type": ["string", "null"],
+                            "description": "Investor names explicitly named in the text, or null if none are named — never invent investor names.",
+                        },
+                    },
+                    "required": ["round_type"],
+                },
+            }
         },
-        "required": ["round_type"],
+        "required": ["rounds"],
     },
 }
 
 
-def parse_funding_update(text: str, config: Dict[str, Any]) -> Dict[str, Any]:
-    """Parse a short free-text funding update (e.g. "closed a $2M seed in July 2025")
-    into structured round fields via a forced Claude tool call. No web search — this
-    is pure extraction from what the user already typed, not a lookup."""
+def parse_funding_update(text: str, config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Parse a free-text funding update into structured round fields via a forced Claude
+    tool call. No web search — this is pure extraction from what the user already typed,
+    not a lookup.
+
+    The text may describe multiple rounds at once (e.g. one per line, pasted from a
+    PitchBook/Crunchbase deal list) — each is returned as a separate entry."""
     api_key = config.get("anthropic_api_key", "")
     if not api_key:
         raise RuntimeError(
@@ -211,7 +225,11 @@ def parse_funding_update(text: str, config: Dict[str, Any]) -> Dict[str, Any]:
     model = config.get("claude_model", "claude-sonnet-5")
 
     prompt = (
-        f'Parse this funding update into structured fields: "{text}"\n\n'
+        f'Parse this funding update into structured fields:\n"""\n{text}\n"""\n\n'
+        "It may describe a single round or multiple rounds — e.g. one round pasted per "
+        "line. Treat each line (or otherwise clearly distinct round mention) as a separate "
+        "entry in the rounds array; skip blank lines and anything that isn't describing a "
+        "funding round (don't force it into a round entry). "
         "This will be recorded as confirmed, trusted data with no further review, so extract "
         "only what is explicitly stated — do not fill in, estimate, or guess any field that "
         "isn't clearly present in the text. Use null for anything not stated."
@@ -220,9 +238,9 @@ def parse_funding_update(text: str, config: Dict[str, Any]) -> Dict[str, Any]:
     try:
         response = client.messages.create(
             model=model,
-            max_tokens=512,
+            max_tokens=2048,
             tools=[PARSE_UPDATE_TOOL],
-            tool_choice={"type": "tool", "name": "submit_funding_round"},
+            tool_choice={"type": "tool", "name": "submit_funding_rounds"},
             messages=[{"role": "user", "content": prompt}],
         )
     except anthropic.NotFoundError as e:
@@ -232,8 +250,8 @@ def parse_funding_update(text: str, config: Dict[str, Any]) -> Dict[str, Any]:
         ) from e
 
     for block in response.content:
-        if getattr(block, "type", None) == "tool_use" and block.name == "submit_funding_round":
-            return block.input
+        if getattr(block, "type", None) == "tool_use" and block.name == "submit_funding_rounds":
+            return block.input.get("rounds", [])
 
     raise RuntimeError("Claude did not return structured data for this update.")
 

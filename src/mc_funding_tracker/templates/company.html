@@ -164,11 +164,11 @@
 
 <div class="section-title">Report a Funding Update</div>
 <div class="card">
-  <p class="meta">Describe what you heard in plain English — it's parsed into a funding round and added above, already confirmed (source: internal).</p>
+  <p class="meta">Describe what you heard in plain English — it's parsed into funding round(s) and added above, already confirmed (source: internal). Pasting multiple rounds? Put one per line.</p>
   <form class="research-form" method="post" action="{{ url_for('report_funding_update', company_id=company.id) }}" style="margin-top: 10px;">
     <div class="field">
       <label for="body">What happened?</label>
-      <textarea id="body" name="body" rows="2" placeholder="Closed a $2M seed round in July 2025 led by Acme Ventures"></textarea>
+      <textarea id="body" name="body" rows="4" placeholder="Closed a $2M seed round in July 2025 led by Acme Ventures&#10;Series A, $10M, March 2022, led by Norwest Venture Partners"></textarea>
     </div>
     <button type="submit" class="primary" data-working-text="Recording…">Add Update</button>
   </form>

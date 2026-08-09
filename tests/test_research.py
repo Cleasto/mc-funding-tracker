@@ -39,13 +39,15 @@ class _FakeClient:
 
 
 def test_parse_funding_update_returns_tool_input(monkeypatch):
-    parsed = {
+    rounds = [{
         "round_type": "Seed",
         "amount_usd": 2_000_000,
         "announced_date": "2025-07-01",
         "investors": None,
-    }
-    response = _FakeResponse([_FakeBlock("tool_use", name="submit_funding_round", input=parsed)])
+    }]
+    response = _FakeResponse(
+        [_FakeBlock("tool_use", name="submit_funding_rounds", input={"rounds": rounds})]
+    )
     monkeypatch.setattr(
         research.anthropic, "Anthropic", lambda **kwargs: _FakeClient(response)
     )
@@ -54,7 +56,27 @@ def test_parse_funding_update_returns_tool_input(monkeypatch):
         "closed a $2M seed round in July 2025", {"anthropic_api_key": "sk-fake"}
     )
 
-    assert result == parsed
+    assert result == rounds
+
+
+def test_parse_funding_update_returns_multiple_rounds(monkeypatch):
+    rounds = [
+        {"round_type": "Seed", "amount_usd": 2_000_000, "announced_date": "2020-01-01", "investors": None},
+        {"round_type": "Series A", "amount_usd": 10_000_000, "announced_date": "2022-03-01", "investors": "Acme Ventures"},
+    ]
+    response = _FakeResponse(
+        [_FakeBlock("tool_use", name="submit_funding_rounds", input={"rounds": rounds})]
+    )
+    monkeypatch.setattr(
+        research.anthropic, "Anthropic", lambda **kwargs: _FakeClient(response)
+    )
+
+    result = research.parse_funding_update(
+        "Seed, $2M, Jan 2020\nSeries A, $10M, March 2022, Acme Ventures",
+        {"anthropic_api_key": "sk-fake"},
+    )
+
+    assert result == rounds
 
 
 def test_parse_funding_update_requires_api_key():

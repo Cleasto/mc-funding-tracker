@@ -156,17 +156,22 @@ def create_app(config: Dict[str, Any]) -> Flask:
         if not text:
             return redirect(url_for("company_detail", company_id=company_id))
         try:
-            parsed = parse_funding_update(text, config)
-            db.add_funding_round(
-                company_id=company_id,
-                round_type=parsed.get("round_type"),
-                amount_usd=parsed.get("amount_usd"),
-                announced_date=parsed.get("announced_date"),
-                investors=parsed.get("investors"),
-                source="internal",
-                source_url=None,
-            )
-            flash(f"Recorded: {parsed.get('round_type') or 'funding round'}.", "success")
+            parsed_rounds = parse_funding_update(text, config)
+            if not parsed_rounds:
+                flash("Could not find any funding round in that update.", "error")
+                return redirect(url_for("company_detail", company_id=company_id))
+            for parsed in parsed_rounds:
+                db.add_funding_round(
+                    company_id=company_id,
+                    round_type=parsed.get("round_type"),
+                    amount_usd=parsed.get("amount_usd"),
+                    announced_date=parsed.get("announced_date"),
+                    investors=parsed.get("investors"),
+                    source="internal",
+                    source_url=None,
+                )
+            round_types = ", ".join(r.get("round_type") or "funding round" for r in parsed_rounds)
+            flash(f"Recorded {len(parsed_rounds)} round(s): {round_types}.", "success")
         except Exception as e:
             logger.exception(f"Failed to parse funding update for company_id={company_id}")
             flash(f"Could not record that update: {e}", "error")
