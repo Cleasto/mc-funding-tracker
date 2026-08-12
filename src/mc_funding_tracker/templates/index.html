@@ -35,8 +35,10 @@
             {% if c.latest_round %}
               {{ c.latest_round.round_type }} {{ c.latest_round.amount_usd|usd }}
               <span class="badge {{ c.latest_round.status }}">{{ c.latest_round.status }}</span>
+            {% elif c.last_researched_at %}
+              <span class="meta">no rounds found</span>
             {% else %}
-              <span class="meta">no rounds yet</span>
+              <span class="meta">no research</span>
             {% endif %}
           </td>
           <td>

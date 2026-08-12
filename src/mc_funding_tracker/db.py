@@ -84,6 +84,10 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if "matched_entity_name" not in columns:
         conn.execute("ALTER TABLE funding_rounds ADD COLUMN matched_entity_name TEXT")
 
+    company_columns = {row["name"] for row in conn.execute("PRAGMA table_info(companies)")}
+    if "last_researched_at" not in company_columns:
+        conn.execute("ALTER TABLE companies ADD COLUMN last_researched_at TEXT")
+
     # Backfill CIK for sec_edgar rows that predate this column (or predate this
     # backfill itself) — it's embedded in source_url (.../data/<cik>/...), so no
     # data is lost. Gated on "cik IS NULL" rather than "just added the column", so
@@ -270,6 +274,17 @@ def set_company_cik(company_id: int, sec_cik: str) -> None:
     """Record the resolved SEC CIK for a company, once known."""
     with _connect() as conn:
         conn.execute("UPDATE companies SET sec_cik = ? WHERE id = ?", (sec_cik, company_id))
+
+
+def mark_researched(company_id: int) -> None:
+    """Record that a research pass has been run for this company, regardless of
+    whether it found anything — lets the UI distinguish "never researched" from
+    "researched, nothing found"."""
+    with _connect() as conn:
+        conn.execute(
+            "UPDATE companies SET last_researched_at = datetime('now') WHERE id = ?",
+            (company_id,),
+        )
 
 
 def add_funding_round(

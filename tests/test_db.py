@@ -222,3 +222,12 @@ def test_get_companies_lists_latest_round():
     companies = db.get_companies()
     assert len(companies) == 1
     assert companies[0]["latest_round"]["round_type"] == "Series A"
+
+
+def test_mark_researched_sets_last_researched_at():
+    company_id = db.add_company("Acme Inc", "", False, [])
+    assert db.get_companies()[0]["last_researched_at"] is None
+
+    db.mark_researched(company_id)
+
+    assert db.get_companies()[0]["last_researched_at"] is not None

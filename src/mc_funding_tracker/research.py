@@ -289,5 +289,7 @@ def run_research(company_id: int, config: Dict[str, Any]) -> Dict[str, Any]:
         logger.exception(f"Web research failed for {company['name']}")
         summary["errors"].append(f"Web research: {e}")
 
+    db.mark_researched(company_id)
+
     logger.info(f"Finished research for company_id={company_id}: {summary}")
     return summary
