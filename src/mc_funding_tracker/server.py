@@ -229,6 +229,12 @@ def create_app(config: Dict[str, Any]) -> Flask:
         flash("Founder updated.", "success")
         return redirect(request.referrer or url_for("index"))
 
+    @app.route("/founder/<int:founder_id>/delete", methods=["POST"])
+    def delete_founder_route(founder_id: int):
+        db.delete_founder(founder_id)
+        flash("Founder deleted.", "success")
+        return redirect(request.referrer or url_for("index"))
+
     @app.route("/round/<int:round_id>/edit", methods=["POST"])
     def edit_round_route(round_id: int):
         round_type = request.form.get("round_type", "").strip() or None

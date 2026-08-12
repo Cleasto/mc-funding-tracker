@@ -44,6 +44,9 @@
       <input type="number" name="class_year" value="{{ f.class_year or '' }}" placeholder="Class year">
       <button type="submit" class="small primary">Save</button>
       <button type="button" class="small" onclick="toggleEdit('founder-{{ f.id }}')">Cancel</button>
+      <button type="submit" class="icon-btn danger" formaction="{{ url_for('delete_founder_route', founder_id=f.id) }}"
+              onclick="return confirm('Delete this founder? This cannot be undone.')"
+              title="Delete founder" aria-label="Delete founder">🗑</button>
     </form>
     {% endfor %}
     <span id="view-add-founder" class="chip">

@@ -185,6 +185,21 @@ def test_update_founder_changes_name_and_class_year():
     assert founder["class_year"] == 2019
 
 
+def test_delete_founder_removes_founder_and_company_link():
+    company_id = db.add_company(
+        "Acme Inc", "", False, [{"name": "Jane Doe", "class_year": 2018}]
+    )
+    db.add_founder(company_id, "Alex Smith", 2019)
+    founder_id = next(
+        f["id"] for f in db.get_company(company_id)["founders"] if f["name"] == "Alex Smith"
+    )
+
+    db.delete_founder(founder_id)
+
+    founders = {f["name"] for f in db.get_company(company_id)["founders"]}
+    assert founders == {"Jane Doe"}
+
+
 def test_update_funding_round_changes_editable_fields():
     company_id = db.add_company("Acme Inc", "", False, [])
     db.add_funding_round(company_id, "Seed", 1_000_000, "2026-01-01", None, "internal", None)

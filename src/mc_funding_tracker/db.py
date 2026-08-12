@@ -427,6 +427,13 @@ def update_founder(founder_id: int, name: str, class_year: Optional[int]) -> Non
         )
 
 
+def delete_founder(founder_id: int) -> None:
+    """Delete a founder and their company link(s)."""
+    with _connect() as conn:
+        conn.execute("DELETE FROM founder_companies WHERE founder_id = ?", (founder_id,))
+        conn.execute("DELETE FROM founders WHERE id = ?", (founder_id,))
+
+
 def update_funding_round(
     round_id: int,
     round_type: Optional[str],
