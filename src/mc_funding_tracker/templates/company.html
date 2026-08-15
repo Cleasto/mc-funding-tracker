@@ -134,6 +134,9 @@
           <div class="edit-actions">
             <button type="submit" class="small primary">Save</button>
             <button type="button" class="small" onclick="toggleEdit('round-{{ r.id }}')">Cancel</button>
+            {% if r.status == "confirmed" %}
+            <button type="submit" class="small" formaction="{{ url_for('unconfirm_round_route', round_id=r.id) }}">Move to Unconfirmed</button>
+            {% endif %}
           </div>
         </form>
       </li>

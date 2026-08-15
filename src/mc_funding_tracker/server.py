@@ -193,6 +193,12 @@ def create_app(config: Dict[str, Any]) -> Flask:
         db.unreject_round(round_id)
         return redirect(request.referrer or url_for("index"))
 
+    @app.route("/round/<int:round_id>/unconfirm", methods=["POST"])
+    def unconfirm_round_route(round_id: int):
+        db.unconfirm_round(round_id)
+        flash("Round moved back to unconfirmed.", "success")
+        return redirect(request.referrer or url_for("index"))
+
     @app.route("/company/<int:company_id>/edit", methods=["POST"])
     def edit_company_route(company_id: int):
         name = request.form.get("name", "").strip()

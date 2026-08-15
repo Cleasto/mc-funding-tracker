@@ -110,6 +110,17 @@ def test_unreject_round_reverses_status_and_blocklist():
     assert db.get_rejected_ciks(company_id) == []
 
 
+def test_unconfirm_round_reverses_confirmed_status():
+    company_id = db.add_company("Acme Inc", "", False, [])
+    db.add_funding_round(company_id, "Seed", 1_000_000, "2026-01-01", None, "web_research", "https://example.com")
+    round_id = db.get_company(company_id)["funding_rounds"][0]["id"]
+    db.confirm_round(round_id)
+
+    db.unconfirm_round(round_id)
+
+    assert db.get_company(company_id)["funding_rounds"][0]["status"] == "unconfirmed"
+
+
 def test_confirm_sec_edgar_round_records_company_cik():
     company_id = db.add_company("Acme Inc", "", False, [])
     db.add_funding_round(

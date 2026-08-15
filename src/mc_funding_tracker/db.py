@@ -402,6 +402,12 @@ def unreject_round(round_id: int) -> None:
             )
 
 
+def unconfirm_round(round_id: int) -> None:
+    """Move a confirmed round back to unconfirmed, for review to be redone."""
+    with _connect() as conn:
+        conn.execute("UPDATE funding_rounds SET status = 'unconfirmed' WHERE id = ?", (round_id,))
+
+
 def get_rejected_ciks(company_id: int) -> List[str]:
     """Return CIKs that have been marked as 'not this company' for a company."""
     with _connect() as conn:
