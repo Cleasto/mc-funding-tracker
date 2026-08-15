@@ -1,23 +1,36 @@
 {% extends "base.html" %}
 {% block title %}Companies – mc-funding-tracker{% endblock %}
 {% block content %}
+  <div class="card">
+    <form method="get" class="inline-form">
+      <input type="hidden" name="sort" value="{{ sort }}">
+      <input type="hidden" name="dir" value="{{ direction }}">
+      <label for="grad_years" class="meta">Founder graduated within</label>
+      <select id="grad_years" name="grad_years" onchange="this.form.submit()">
+        <option value="" {% if not grad_years %}selected{% endif %}>All years</option>
+        {% for y in [1, 2, 3, 5, 10, 15, 20] %}
+        <option value="{{ y }}" {% if grad_years == y|string %}selected{% endif %}>{{ y }} year{{ "s" if y != 1 else "" }}</option>
+        {% endfor %}
+      </select>
+    </form>
+  </div>
 {% if not companies %}
   <div class="card">
-    <p class="meta">No companies tracked yet. <a href="/company/new">Add one</a> to get started.</p>
+    <p class="meta">{% if grad_years %}No companies match that filter.{% else %}No companies tracked yet. <a href="/company/new">Add one</a> to get started.{% endif %}</p>
   </div>
 {% else %}
   <div class="card">
     <div class="meta">Total confirmed funding across {{ companies|length }} compan{{ "y" if companies|length == 1 else "ies" }}</div>
-    <h2>{{ grand_total|usd }}</h2>
+    <h2>{{ total_funding|usd }}</h2>
   </div>
   <div class="card" style="padding: 0;">
     <table>
       <thead>
         <tr>
-          <th><a href="{{ url_for('index', sort='name', dir=next_dir['name']) }}" class="sort-link">Company{% if sort == 'name' %} <span class="sort-arrow">{{ '▲' if direction == 'asc' else '▼' }}</span>{% endif %}</a></th>
+          <th><a href="{{ url_for('index', sort='name', dir=next_dir['name'], grad_years=grad_years) }}" class="sort-link">Company{% if sort == 'name' %} <span class="sort-arrow">{{ '▲' if direction == 'asc' else '▼' }}</span>{% endif %}</a></th>
           <th>Founder(s)</th>
           <th>Dartmouth IP</th>
-          <th><a href="{{ url_for('index', sort='total_funding', dir=next_dir['total_funding']) }}" class="sort-link">Total Funding{% if sort == 'total_funding' %} <span class="sort-arrow">{{ '▲' if direction == 'asc' else '▼' }}</span>{% endif %}</a></th>
+          <th><a href="{{ url_for('index', sort='total_funding', dir=next_dir['total_funding'], grad_years=grad_years) }}" class="sort-link">Total Funding{% if sort == 'total_funding' %} <span class="sort-arrow">{{ '▲' if direction == 'asc' else '▼' }}</span>{% endif %}</a></th>
           <th>Last Round</th>
           <th></th>
         </tr>

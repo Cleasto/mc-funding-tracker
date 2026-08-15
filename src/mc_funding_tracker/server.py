@@ -8,6 +8,7 @@ thread-safety concerns beyond the job tracker's own lock.
 """
 from __future__ import annotations
 
+import datetime
 import logging
 import os
 import threading
@@ -67,7 +68,18 @@ def create_app(config: Dict[str, Any]) -> Flask:
         if direction not in ("asc", "desc"):
             direction = default_dirs[sort]
 
+        grad_years = request.args.get("grad_years", "")
+        cutoff_year = None
+        if grad_years.isdigit():
+            cutoff_year = datetime.date.today().year - int(grad_years)
+
         companies = db.get_companies()
+        if cutoff_year is not None:
+            companies = [
+                c for c in companies
+                if any(f["class_year"] and f["class_year"] >= cutoff_year for f in c["founders"])
+            ]
+
         if sort == "name":
             companies.sort(key=lambda c: c["name"].lower(), reverse=(direction == "desc"))
         else:
@@ -75,16 +87,17 @@ def create_app(config: Dict[str, Any]) -> Flask:
 
         next_dir = {col: ("desc" if (sort == col and direction == "asc") else "asc" if (sort == col and direction == "desc") else default_dirs[col]) for col in default_dirs}
 
-        grand_total = db.get_grand_total_funding()
+        total_funding = sum(c["total_funding"] for c in companies)
         researching_ids = jobs.running_ids()
         return render_template(
             "index.html",
             companies=companies,
-            grand_total=grand_total,
+            total_funding=total_funding,
             researching_ids=researching_ids,
             sort=sort,
             direction=direction,
             next_dir=next_dir,
+            grad_years=grad_years,
         )
 
     @app.route("/company/new")
