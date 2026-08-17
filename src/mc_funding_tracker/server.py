@@ -73,12 +73,17 @@ def create_app(config: Dict[str, Any]) -> Flask:
         if grad_years.isdigit():
             cutoff_year = datetime.date.today().year - int(grad_years)
 
+        exited_only = request.args.get("exited") == "on"
+
         companies = db.get_companies()
         if cutoff_year is not None:
             companies = [
                 c for c in companies
                 if any(f["class_year"] and f["class_year"] >= cutoff_year for f in c["founders"])
             ]
+        if exited_only:
+            exited_ids = db.get_exited_company_ids()
+            companies = [c for c in companies if c["id"] in exited_ids]
 
         if sort == "name":
             companies.sort(key=lambda c: c["name"].lower(), reverse=(direction == "desc"))
@@ -98,6 +103,7 @@ def create_app(config: Dict[str, Any]) -> Flask:
             direction=direction,
             next_dir=next_dir,
             grad_years=grad_years,
+            exited_only=exited_only,
         )
 
     @app.route("/company/new")

@@ -229,6 +229,34 @@ def get_grand_total_funding() -> int:
         return row["total"]
 
 
+# round_type is free text (filled in by research/EDGAR, not an enum), so exit rounds are
+# identified by keyword rather than a clean status. Checked against the full set of
+# round_type values actually seen in this database before picking these keywords — matches
+# things like "IPO", "Acquisition", "Reverse Merger / SPAC...", "Post-IPO Debt" (implies an
+# IPO already happened), "Take-Private Buyout", without false-matching ordinary round types.
+_EXIT_ROUND_TYPE_LIKE_CLAUSES = " OR ".join(
+    "LOWER(round_type) LIKE ?" for _ in range(6)
+)
+_EXIT_ROUND_TYPE_PATTERNS = [
+    "%ipo%", "%acqui%", "%spac%", "%buyout%", "%reverse merger%", "%take-private%",
+]
+
+
+def get_exited_company_ids() -> set:
+    """Return ids of companies with at least one non-rejected exit-type round (IPO,
+    acquisition, SPAC/reverse merger, buyout)."""
+    with _connect() as conn:
+        rows = conn.execute(
+            f"""
+            SELECT DISTINCT company_id FROM funding_rounds
+            WHERE status != 'rejected' AND round_type IS NOT NULL
+              AND ({_EXIT_ROUND_TYPE_LIKE_CLAUSES})
+            """,
+            _EXIT_ROUND_TYPE_PATTERNS,
+        ).fetchall()
+        return {row["company_id"] for row in rows}
+
+
 def get_companies() -> List[dict]:
     """Return all companies with founders, latest round, and total funding attached."""
     with _connect() as conn:

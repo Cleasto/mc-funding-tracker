@@ -235,6 +235,28 @@ def test_get_companies_lists_latest_round():
     assert companies[0]["latest_round"]["round_type"] == "Series A"
 
 
+def test_get_exited_company_ids_matches_ipo_and_acquisition_round_types():
+    ipo_id = db.add_company("Ipo Co", "", False, [])
+    db.add_funding_round(ipo_id, "IPO", None, "2026-01-01", None, "web_research", "https://example.com")
+    acquired_id = db.add_company("Acquired Co", "", False, [])
+    db.add_funding_round(acquired_id, "Acquisition", None, "2026-01-01", None, "web_research", "https://example.com")
+    private_id = db.add_company("Still Private Co", "", False, [])
+    db.add_funding_round(private_id, "Series A", 5_000_000, "2026-01-01", None, "web_research", "https://example.com")
+
+    exited_ids = db.get_exited_company_ids()
+
+    assert exited_ids == {ipo_id, acquired_id}
+
+
+def test_get_exited_company_ids_ignores_rejected_rounds():
+    company_id = db.add_company("Acme Inc", "", False, [])
+    db.add_funding_round(company_id, "IPO", None, "2026-01-01", None, "web_research", "https://example.com")
+    round_id = db.get_company(company_id)["funding_rounds"][0]["id"]
+    db.reject_round(round_id)
+
+    assert db.get_exited_company_ids() == set()
+
+
 def test_mark_researched_sets_last_researched_at():
     company_id = db.add_company("Acme Inc", "", False, [])
     assert db.get_companies()[0]["last_researched_at"] is None
