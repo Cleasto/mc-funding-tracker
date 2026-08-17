@@ -17,6 +17,8 @@
         Exited (IPO/acquisition)
       </label>
     </form>
+    <a class="btn small" style="float: right;"
+       href="{{ url_for('export_companies', sort=sort, dir=direction, grad_years=grad_years, exited=('on' if exited_only else none)) }}">Download (.xlsx)</a>
   </div>
 {% if not companies %}
   <div class="card">

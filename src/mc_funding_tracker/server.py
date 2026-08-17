@@ -9,13 +9,16 @@ thread-safety concerns beyond the job tracker's own lock.
 from __future__ import annotations
 
 import datetime
+import io
 import logging
 import os
 import threading
 import webbrowser
 from typing import Any, Dict
 
-from flask import Flask, flash, redirect, render_template, request, url_for
+from flask import Flask, flash, redirect, render_template, request, send_file, url_for
+from openpyxl import Workbook
+from openpyxl.styles import Font
 from werkzeug.serving import make_server
 
 from . import db, jobs
@@ -47,6 +50,94 @@ def _format_class_year(year) -> str:
     return f"'{str(int(year))[-2:]}"
 
 
+def _filter_and_sort_companies():
+    """Apply the grad_years/exited filters and sort from query params. Shared by the
+    index page and the Excel export so the export actually matches what's on screen."""
+    # Default-direction-per-column (name starts ascending, total_funding starts
+    # descending — highest funding first is the useful default for a money column)
+    # so the first click on a header does something sensible before toggling.
+    default_dirs = {"name": "asc", "total_funding": "desc"}
+    sort = request.args.get("sort", "name")
+    if sort not in default_dirs:
+        sort = "name"
+    direction = request.args.get("dir", default_dirs[sort])
+    if direction not in ("asc", "desc"):
+        direction = default_dirs[sort]
+
+    grad_years = request.args.get("grad_years", "")
+    cutoff_year = None
+    if grad_years.isdigit():
+        cutoff_year = datetime.date.today().year - int(grad_years)
+
+    exited_only = request.args.get("exited") == "on"
+
+    companies = db.get_companies()
+    if cutoff_year is not None:
+        companies = [
+            c for c in companies
+            if any(f["class_year"] and f["class_year"] >= cutoff_year for f in c["founders"])
+        ]
+    if exited_only:
+        exited_ids = db.get_exited_company_ids()
+        companies = [c for c in companies if c["id"] in exited_ids]
+
+    if sort == "name":
+        companies.sort(key=lambda c: c["name"].lower(), reverse=(direction == "desc"))
+    else:
+        companies.sort(key=lambda c: c["total_funding"], reverse=(direction == "desc"))
+
+    next_dir = {col: ("desc" if (sort == col and direction == "asc") else "asc" if (sort == col and direction == "desc") else default_dirs[col]) for col in default_dirs}
+
+    return companies, sort, direction, next_dir, grad_years, exited_only
+
+
+def _companies_to_xlsx(companies) -> io.BytesIO:
+    """Build an .xlsx workbook mirroring the company list table."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Companies"
+
+    headers = [
+        "Company", "Founder(s)", "Dartmouth IP", "Total Funding",
+        "Last Round Type", "Last Round Amount", "Last Round Status",
+    ]
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+
+    for c in companies:
+        founders = ", ".join(
+            f["name"] + (f" '{str(f['class_year'])[-2:]}" if f["class_year"] else "")
+            for f in c["founders"]
+        )
+        latest = c["latest_round"]
+        if latest:
+            round_type, amount, status = latest["round_type"], latest["amount_usd"], latest["status"]
+        elif c["last_researched_at"]:
+            round_type, amount, status = "no rounds found", None, ""
+        else:
+            round_type, amount, status = "no research", None, ""
+        ws.append([
+            c["name"], founders, "Yes" if c["dartmouth_ip"] else "",
+            c["total_funding"], round_type, amount, status,
+        ])
+
+    money_format = '"$"#,##0'
+    for row in ws.iter_rows(min_row=2, min_col=4, max_col=4):
+        row[0].number_format = money_format
+    for row in ws.iter_rows(min_row=2, min_col=6, max_col=6):
+        row[0].number_format = money_format
+
+    widths = [28, 32, 12, 14, 24, 16, 14]
+    for i, width in enumerate(widths, start=1):
+        ws.column_dimensions[ws.cell(row=1, column=i).column_letter].width = width
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf
+
+
 def create_app(config: Dict[str, Any]) -> Flask:
     """Create and configure the Flask application."""
     app = Flask(__name__)
@@ -57,40 +148,7 @@ def create_app(config: Dict[str, Any]) -> Flask:
 
     @app.route("/")
     def index():
-        # Default-direction-per-column (name starts ascending, total_funding starts
-        # descending — highest funding first is the useful default for a money column)
-        # so the first click on a header does something sensible before toggling.
-        default_dirs = {"name": "asc", "total_funding": "desc"}
-        sort = request.args.get("sort", "name")
-        if sort not in default_dirs:
-            sort = "name"
-        direction = request.args.get("dir", default_dirs[sort])
-        if direction not in ("asc", "desc"):
-            direction = default_dirs[sort]
-
-        grad_years = request.args.get("grad_years", "")
-        cutoff_year = None
-        if grad_years.isdigit():
-            cutoff_year = datetime.date.today().year - int(grad_years)
-
-        exited_only = request.args.get("exited") == "on"
-
-        companies = db.get_companies()
-        if cutoff_year is not None:
-            companies = [
-                c for c in companies
-                if any(f["class_year"] and f["class_year"] >= cutoff_year for f in c["founders"])
-            ]
-        if exited_only:
-            exited_ids = db.get_exited_company_ids()
-            companies = [c for c in companies if c["id"] in exited_ids]
-
-        if sort == "name":
-            companies.sort(key=lambda c: c["name"].lower(), reverse=(direction == "desc"))
-        else:
-            companies.sort(key=lambda c: c["total_funding"], reverse=(direction == "desc"))
-
-        next_dir = {col: ("desc" if (sort == col and direction == "asc") else "asc" if (sort == col and direction == "desc") else default_dirs[col]) for col in default_dirs}
+        companies, sort, direction, next_dir, grad_years, exited_only = _filter_and_sort_companies()
 
         total_funding = sum(c["total_funding"] for c in companies)
         researching_ids = jobs.running_ids()
@@ -104,6 +162,18 @@ def create_app(config: Dict[str, Any]) -> Flask:
             next_dir=next_dir,
             grad_years=grad_years,
             exited_only=exited_only,
+        )
+
+    @app.route("/export.xlsx")
+    def export_companies():
+        companies, _sort, _direction, _next_dir, _grad_years, _exited_only = _filter_and_sort_companies()
+        buf = _companies_to_xlsx(companies)
+        filename = f"mc-funding-tracker-{datetime.date.today().isoformat()}.xlsx"
+        return send_file(
+            buf,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name=filename,
         )
 
     @app.route("/company/new")
