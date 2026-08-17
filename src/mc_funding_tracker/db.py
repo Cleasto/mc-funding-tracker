@@ -243,13 +243,14 @@ _EXIT_ROUND_TYPE_PATTERNS = [
 
 
 def get_exited_company_ids() -> set:
-    """Return ids of companies with at least one non-rejected exit-type round (IPO,
-    acquisition, SPAC/reverse merger, buyout)."""
+    """Return ids of companies with at least one confirmed exit-type round (IPO,
+    acquisition, SPAC/reverse merger, buyout). Unconfirmed rounds haven't been
+    verified as real or as belonging to this company, so they don't count."""
     with _connect() as conn:
         rows = conn.execute(
             f"""
             SELECT DISTINCT company_id FROM funding_rounds
-            WHERE status != 'rejected' AND round_type IS NOT NULL
+            WHERE status = 'confirmed' AND round_type IS NOT NULL
               AND ({_EXIT_ROUND_TYPE_LIKE_CLAUSES})
             """,
             _EXIT_ROUND_TYPE_PATTERNS,
