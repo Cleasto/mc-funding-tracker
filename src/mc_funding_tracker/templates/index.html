@@ -48,7 +48,7 @@
       </thead>
       <tbody>
         {% for c in companies %}
-        <tr>
+        <tr class="{{ c.row_class }}">
           <td><a href="{{ url_for('company_detail', company_id=c.id) }}">{{ c.name }}</a></td>
           <td class="meta">
             {% for f in c.founders %}{{ f.name }}{% if f.class_year %} {{ f.class_year|classyear }}{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}

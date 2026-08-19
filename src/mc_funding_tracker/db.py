@@ -255,6 +255,21 @@ def get_exited_company_ids() -> set:
         return {row["company_id"] for row in rows}
 
 
+def get_companies_with_unconfirmed_amounts() -> set:
+    """Return ids of companies with at least one unconfirmed, non-rejected round that
+    has a disclosed amount — i.e. companies whose total_funding actually changes when
+    unconfirmed rounds are included, as opposed to just having unconfirmed rounds with
+    no dollar figure attached."""
+    with _connect() as conn:
+        rows = conn.execute(
+            """
+            SELECT DISTINCT company_id FROM funding_rounds
+            WHERE status = 'unconfirmed' AND amount_usd IS NOT NULL
+            """
+        ).fetchall()
+        return {row["company_id"] for row in rows}
+
+
 def get_companies(include_unconfirmed: bool = False) -> List[dict]:
     """Return all companies with founders, latest round, and total funding attached.
 

@@ -167,6 +167,20 @@ def test_total_funding_excludes_rejected_even_when_including_unconfirmed():
     assert db.get_total_funding(company_id, include_unconfirmed=True) == 1_000_000
 
 
+def test_get_companies_with_unconfirmed_amounts():
+    all_confirmed_id = db.add_company("All Confirmed Co", "", False, [])
+    db.add_funding_round(all_confirmed_id, "Seed", 1_000_000, "2026-01-01", None, "internal", None)
+
+    has_unconfirmed_id = db.add_company("Has Unconfirmed Co", "", False, [])
+    db.add_funding_round(has_unconfirmed_id, "Series A", 5_000_000, "2026-01-01", None, "web_research", "https://x")
+
+    # Unconfirmed but no disclosed amount — doesn't change the total, so shouldn't count.
+    undisclosed_id = db.add_company("Undisclosed Unconfirmed Co", "", False, [])
+    db.add_funding_round(undisclosed_id, "Seed", None, "2026-01-01", None, "web_research", "https://x")
+
+    assert db.get_companies_with_unconfirmed_amounts() == {has_unconfirmed_id}
+
+
 def test_add_note_and_notes_count():
     company_id = db.add_company("Acme Inc", "", False, [])
     db.add_note(company_id, "Heard they're raising a seed round")

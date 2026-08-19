@@ -85,6 +85,13 @@ def _filter_and_sort_companies():
         exited_ids = db.get_exited_company_ids()
         companies = [c for c in companies if c["id"] in exited_ids]
 
+    # Row tint: only meaningful in "all" mode, where a company's total might actually
+    # include unconfirmed dollars. In "confirmed" mode every total is confirmed-only by
+    # construction, so every row is "confirmed".
+    unconfirmed_ids = db.get_companies_with_unconfirmed_amounts() if funding_status == "all" else set()
+    for c in companies:
+        c["row_class"] = "funding-unconfirmed" if c["id"] in unconfirmed_ids else "funding-confirmed"
+
     if sort == "name":
         companies.sort(key=lambda c: c["name"].lower(), reverse=(direction == "desc"))
     else:
