@@ -19,10 +19,8 @@
   --badge-text: #1a56db;
   --confirmed-bg: #f0fdf4;
   --confirmed-text: #16a34a;
-  --confirmed-row-bg: rgba(22, 163, 74, 0.5);
   --unconfirmed-bg: #fffbeb;
   --unconfirmed-text: #b45309;
-  --unconfirmed-row-bg: rgba(180, 83, 9, 0.5);
   --error-bg: #fef2f2;
   --error-text: #b91c1c;
   --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
@@ -41,10 +39,8 @@
     --badge-text: #70b8ff;
     --confirmed-bg: #0a2e1a;
     --confirmed-text: #34d058;
-    --confirmed-row-bg: rgba(52, 208, 88, 0.5);
     --unconfirmed-bg: #3a2e0a;
     --unconfirmed-text: #e8a94a;
-    --unconfirmed-row-bg: rgba(232, 169, 74, 0.5);
     --error-bg: #3a0a0a;
     --error-text: #f87171;
     --shadow: 0 1px 3px rgba(0,0,0,.3), 0 1px 2px rgba(0,0,0,.2);
@@ -90,8 +86,8 @@ th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--bo
 th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); font-weight: 600; }
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--bg); }
-tr.funding-confirmed td { background: var(--confirmed-row-bg); }
-tr.funding-unconfirmed td { background: var(--unconfirmed-row-bg); }
+tr.funding-confirmed td { background: var(--confirmed-bg); }
+tr.funding-unconfirmed td { background: var(--unconfirmed-bg); }
 
 .badge {
   display: inline-flex;
