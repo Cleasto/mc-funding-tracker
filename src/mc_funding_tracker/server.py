@@ -71,7 +71,11 @@ def _filter_and_sort_companies():
 
     exited_only = request.args.get("exited") == "on"
 
-    companies = db.get_companies()
+    funding_status = request.args.get("funding_status", "confirmed")
+    if funding_status not in ("confirmed", "all"):
+        funding_status = "confirmed"
+
+    companies = db.get_companies(include_unconfirmed=(funding_status == "all"))
     if cutoff_year is not None:
         companies = [
             c for c in companies
@@ -88,7 +92,7 @@ def _filter_and_sort_companies():
 
     next_dir = {col: ("desc" if (sort == col and direction == "asc") else "asc" if (sort == col and direction == "desc") else default_dirs[col]) for col in default_dirs}
 
-    return companies, sort, direction, next_dir, grad_years, exited_only
+    return companies, sort, direction, next_dir, grad_years, exited_only, funding_status
 
 
 def _companies_to_xlsx(companies) -> io.BytesIO:
@@ -148,7 +152,7 @@ def create_app(config: Dict[str, Any]) -> Flask:
 
     @app.route("/")
     def index():
-        companies, sort, direction, next_dir, grad_years, exited_only = _filter_and_sort_companies()
+        companies, sort, direction, next_dir, grad_years, exited_only, funding_status = _filter_and_sort_companies()
 
         total_funding = sum(c["total_funding"] for c in companies)
         researching_ids = jobs.running_ids()
@@ -162,11 +166,12 @@ def create_app(config: Dict[str, Any]) -> Flask:
             next_dir=next_dir,
             grad_years=grad_years,
             exited_only=exited_only,
+            funding_status=funding_status,
         )
 
     @app.route("/export.xlsx")
     def export_companies():
-        companies, _sort, _direction, _next_dir, _grad_years, _exited_only = _filter_and_sort_companies()
+        companies, *_rest = _filter_and_sort_companies()
         buf = _companies_to_xlsx(companies)
         filename = f"mc-funding-tracker-{datetime.date.today().isoformat()}.xlsx"
         return send_file(

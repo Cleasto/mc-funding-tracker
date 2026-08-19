@@ -197,36 +197,33 @@ def get_notes_count(company_id: int, conn: Optional[sqlite3.Connection] = None) 
             conn.close()
 
 
-def get_total_funding(company_id: int, conn: Optional[sqlite3.Connection] = None) -> int:
-    """Return the sum of confirmed funding amounts (USD) for a company.
+def get_total_funding(
+    company_id: int, conn: Optional[sqlite3.Connection] = None, include_unconfirmed: bool = False
+) -> int:
+    """Return the sum of funding amounts (USD) for a company.
 
-    Unconfirmed/rejected rounds don't count — they haven't been verified as
-    real or as belonging to this company. Undisclosed amounts (NULL) are
-    excluded from the sum rather than treated as zero.
+    By default only confirmed rounds count — unconfirmed rounds haven't been
+    verified as real or as belonging to this company. Pass include_unconfirmed=True
+    to also count unconfirmed rounds. Rejected rounds are never included either
+    way. Undisclosed amounts (NULL) are excluded from the sum rather than
+    treated as zero.
     """
     owns_conn = conn is None
     conn = conn or _connect()
+    statuses = ("confirmed", "unconfirmed") if include_unconfirmed else ("confirmed",)
     try:
+        placeholders = ", ".join("?" for _ in statuses)
         row = conn.execute(
-            """
+            f"""
             SELECT COALESCE(SUM(amount_usd), 0) AS total FROM funding_rounds
-            WHERE company_id = ? AND status = 'confirmed'
+            WHERE company_id = ? AND status IN ({placeholders})
             """,
-            (company_id,),
+            (company_id, *statuses),
         ).fetchone()
         return row["total"]
     finally:
         if owns_conn:
             conn.close()
-
-
-def get_grand_total_funding() -> int:
-    """Return the sum of confirmed funding amounts (USD) across all companies."""
-    with _connect() as conn:
-        row = conn.execute(
-            "SELECT COALESCE(SUM(amount_usd), 0) AS total FROM funding_rounds WHERE status = 'confirmed'"
-        ).fetchone()
-        return row["total"]
 
 
 # round_type is free text (filled in by research/EDGAR, not an enum), so exit rounds are
@@ -258,14 +255,20 @@ def get_exited_company_ids() -> set:
         return {row["company_id"] for row in rows}
 
 
-def get_companies() -> List[dict]:
-    """Return all companies with founders, latest round, and total funding attached."""
+def get_companies(include_unconfirmed: bool = False) -> List[dict]:
+    """Return all companies with founders, latest round, and total funding attached.
+
+    include_unconfirmed controls whether total_funding counts unconfirmed rounds
+    alongside confirmed ones (rejected rounds are never counted either way).
+    """
     with _connect() as conn:
         companies = [dict(r) for r in conn.execute("SELECT * FROM companies ORDER BY name").fetchall()]
         for company in companies:
             company["founders"] = get_founders_for_company(company["id"], conn)
             company["latest_round"] = get_latest_round(company["id"], conn)
-            company["total_funding"] = get_total_funding(company["id"], conn)
+            company["total_funding"] = get_total_funding(
+                company["id"], conn, include_unconfirmed=include_unconfirmed
+            )
         return companies
 
 

@@ -16,9 +16,14 @@
         <input type="checkbox" name="exited" onchange="this.form.submit()" {% if exited_only %}checked{% endif %}>
         Exited (IPO/acquisition)
       </label>
+      <label for="funding_status" class="meta" style="margin-left: 12px;">Funding total</label>
+      <select id="funding_status" name="funding_status" onchange="this.form.submit()">
+        <option value="confirmed" {% if funding_status == 'confirmed' %}selected{% endif %}>Confirmed only</option>
+        <option value="all" {% if funding_status == 'all' %}selected{% endif %}>All unrejected rounds</option>
+      </select>
     </form>
     <a class="btn small" style="float: right;"
-       href="{{ url_for('export_companies', sort=sort, dir=direction, grad_years=grad_years, exited=('on' if exited_only else none)) }}">Download (.xlsx)</a>
+       href="{{ url_for('export_companies', sort=sort, dir=direction, grad_years=grad_years, exited=('on' if exited_only else none), funding_status=funding_status) }}">Download (.xlsx)</a>
   </div>
 {% if not companies %}
   <div class="card">
@@ -26,17 +31,17 @@
   </div>
 {% else %}
   <div class="card">
-    <div class="meta">Total confirmed funding across {{ companies|length }} compan{{ "y" if companies|length == 1 else "ies" }}</div>
+    <div class="meta">Total {{ "confirmed" if funding_status == "confirmed" else "confirmed + unconfirmed" }} funding across {{ companies|length }} compan{{ "y" if companies|length == 1 else "ies" }}</div>
     <h2>{{ total_funding|usd }}</h2>
   </div>
   <div class="card" style="padding: 0;">
     <table>
       <thead>
         <tr>
-          <th><a href="{{ url_for('index', sort='name', dir=next_dir['name'], grad_years=grad_years, exited=('on' if exited_only else none)) }}" class="sort-link">Company{% if sort == 'name' %} <span class="sort-arrow">{{ '▲' if direction == 'asc' else '▼' }}</span>{% endif %}</a></th>
+          <th><a href="{{ url_for('index', sort='name', dir=next_dir['name'], grad_years=grad_years, exited=('on' if exited_only else none), funding_status=funding_status) }}" class="sort-link">Company{% if sort == 'name' %} <span class="sort-arrow">{{ '▲' if direction == 'asc' else '▼' }}</span>{% endif %}</a></th>
           <th>Founder(s)</th>
           <th>Dartmouth IP</th>
-          <th><a href="{{ url_for('index', sort='total_funding', dir=next_dir['total_funding'], grad_years=grad_years, exited=('on' if exited_only else none)) }}" class="sort-link">Total Funding{% if sort == 'total_funding' %} <span class="sort-arrow">{{ '▲' if direction == 'asc' else '▼' }}</span>{% endif %}</a></th>
+          <th><a href="{{ url_for('index', sort='total_funding', dir=next_dir['total_funding'], grad_years=grad_years, exited=('on' if exited_only else none), funding_status=funding_status) }}" class="sort-link">Total Funding{% if sort == 'total_funding' %} <span class="sort-arrow">{{ '▲' if direction == 'asc' else '▼' }}</span>{% endif %}</a></th>
           <th>Last Round</th>
           <th></th>
         </tr>

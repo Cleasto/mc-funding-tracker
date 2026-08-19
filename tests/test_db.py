@@ -146,14 +146,25 @@ def test_total_funding_only_counts_confirmed_amounts():
     assert db.get_total_funding(company_id) == 1_000_000
 
 
-def test_grand_total_sums_across_companies():
-    c1 = db.add_company("Acme Inc", "", False, [])
-    c2 = db.add_company("Beta Co", "", False, [])
-    db.add_funding_round(c1, "Seed", 1_000_000, "2026-01-01", None, "internal", None)
-    db.add_funding_round(c2, "Seed", 2_000_000, "2026-01-01", None, "internal", None)
-    db.add_funding_round(c2, "Series A", 5_000_000, "2026-06-01", None, "web_research", "https://x")  # unconfirmed
+def test_total_funding_includes_unconfirmed_when_requested():
+    company_id = db.add_company("Acme Inc", "", False, [])
+    db.add_funding_round(company_id, "Seed", 1_000_000, "2026-01-01", None, "internal", None)
+    db.add_funding_round(company_id, "Series A", 5_000_000, "2026-06-01", None, "web_research", "https://x")  # unconfirmed
 
-    assert db.get_grand_total_funding() == 3_000_000
+    assert db.get_total_funding(company_id) == 1_000_000
+    assert db.get_total_funding(company_id, include_unconfirmed=True) == 6_000_000
+
+
+def test_total_funding_excludes_rejected_even_when_including_unconfirmed():
+    company_id = db.add_company("Acme Inc", "", False, [])
+    db.add_funding_round(company_id, "Seed", 1_000_000, "2026-01-01", None, "internal", None)
+    db.add_funding_round(company_id, "Series A", 5_000_000, "2026-06-01", None, "web_research", "https://x")
+    round_id = [
+        r["id"] for r in db.get_company(company_id)["funding_rounds"] if r["round_type"] == "Series A"
+    ][0]
+    db.reject_round(round_id)
+
+    assert db.get_total_funding(company_id, include_unconfirmed=True) == 1_000_000
 
 
 def test_add_note_and_notes_count():
